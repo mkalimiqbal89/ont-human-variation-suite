@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "ONT Structural Variation Categorization Pipeline"
+authors:
+  - family-names: "Iqbal"
+    given-names: "Kaleem"
+repository-code: "https://github.com/mkalimiqbal89/ONT-Structural-Variations-Categorization-Pipeline"
+license: MIT
+version: 1.0.0
+date-released: "2026-07-26"
