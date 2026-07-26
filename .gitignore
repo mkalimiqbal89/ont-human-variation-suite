@@ -53,3 +53,8 @@ reference/
 # test suite breaks for anyone who clones this repo.
 !tests/fixtures/
 !tests/fixtures/**
+# macOS AppleDouble metadata files (created when copying to/from
+# non-native filesystems, e.g. external drives, network mounts)
+._*
+.AppleDouble
+.DS_Store
