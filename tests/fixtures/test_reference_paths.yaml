@@ -1,0 +1,13 @@
+genome:
+  fasta: "tests/fixtures/dummy_reference.fa"
+  fasta_index: "tests/fixtures/dummy_reference.fa.fai"
+  build: "test"
+annotation:
+  gene_bed: "tests/fixtures/dummy_genes.bed"
+  known_fusions: "tests/fixtures/does_not_exist.tsv"
+  exclusion_bed: "tests/fixtures/does_not_exist.bed"
+tools:
+  bcftools: "bcftools"
+  bedtools: "bedtools"
+  tabix: "tabix"
+  R: "Rscript"

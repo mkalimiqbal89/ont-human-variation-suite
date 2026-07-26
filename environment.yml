@@ -1,0 +1,23 @@
+# Conda environment for the ONT Epi2ME SV Categorization Pipeline
+# Create with: conda env create -f environment.yml
+# Activate with: conda activate ont-sv-pipeline
+name: ont-sv-pipeline
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - bcftools=1.20
+  - bedtools=2.31
+  - tabix
+  - htslib
+  - r-base>=4.3
+  - r-tidyverse
+  - r-vcfr
+  - r-yaml
+  - r-jsonlite
+  - r-optparse
+  - r-rmarkdown
+  - r-ggplot2
+  - bioconductor-genomicranges
+  - bioconductor-variantannotation

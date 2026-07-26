@@ -1,0 +1,22 @@
+# =============================================================================
+# reference_paths.example.yaml
+# Template config — copy to reference_paths.yaml and fill in real paths.
+# The real file is gitignored (machine-specific absolute paths); this
+# template is not.
+# =============================================================================
+
+genome:
+  fasta: "/path/to/reference/GRCh38_no_alt_analysis_set.fna"
+  fasta_index: "/path/to/reference/GRCh38_no_alt_analysis_set.fna.fai"
+  build: "GRCh38"
+
+annotation:
+  gene_bed: "/path/to/reference/gencode.genes.bed"
+  known_fusions: "/path/to/reference/known_fusion_pairs.tsv"
+  exclusion_bed: "/path/to/reference/exclusion_regions.bed"
+
+tools:
+  bcftools: "bcftools"
+  bedtools: "bedtools"
+  tabix: "tabix"
+  R: "Rscript"

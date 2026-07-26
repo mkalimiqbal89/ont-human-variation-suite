@@ -1,0 +1,56 @@
+# =============================================================================
+# pipeline_config.example.yaml
+# Template config — copy to pipeline_config.yaml (or pipeline_config_<sample>.yaml)
+# and fill in real values. The real file is gitignored; this template is not.
+# =============================================================================
+
+sample:
+  sample_id: "SAMPLE_01"
+  raw_sample_prefix: "REPLACE_WITH_ACTUAL_EPI2ME_OUTPUT_PREFIX"
+  run_description: "e.g. PromethION2i 72h WGS, SQK-LSKv114, blood-derived gDNA"
+
+paths:
+  input_dir: "/path/to/epi2me/output/directory"
+  output_dir: "/path/to/this/repo/results"
+  work_dir: "/path/to/this/repo/work"
+  repo_dir: "/path/to/this/repo"
+
+reference:
+  config_file: "config/reference_paths.yaml"
+
+input_files:
+  sv_vcf: "${sample.raw_sample_prefix}.wf_sv.vcf.gz"
+  cnv_vcf: "${sample.raw_sample_prefix}.wf_cnv.vcf.gz"
+  snv_vcf: "${sample.raw_sample_prefix}.wf_snp.vcf.gz"
+  snv_vcf_clinvar: "${sample.raw_sample_prefix}.wf_snp_clinvar.vcf.gz"
+  str_vcf: "${sample.raw_sample_prefix}.wf_str.vcf.gz"
+  # mod_bed: only present if the Epi2ME run had mod=True
+
+filtering:
+  min_sv_length: 30
+  min_read_support: 4
+  min_qual: 20
+  pass_only: true
+  min_vaf: 0.10
+
+sv_categories:
+  deletions: ["DEL"]
+  insertions: ["INS"]
+  duplications: ["DUP"]
+  inversions: ["INV"]
+  translocations: ["BND", "TRA"]
+  complex_rearrangements: ["CPX", "BND_CLUSTER"]
+
+compute:
+  threads: 8
+
+archive:
+  # Internal, non-public longitudinal record of every sample this pipeline
+  # has processed. Never pushed to GitHub — this path lives on institutional
+  # storage only. Leave archive_root empty/unset to disable archiving.
+  archive_root: "/path/to/internal/archive/root"
+  compress: false
+
+logging:
+  log_dir: "logs"
+  log_level: "INFO"

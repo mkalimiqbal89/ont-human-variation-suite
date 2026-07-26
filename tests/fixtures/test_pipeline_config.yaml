@@ -1,0 +1,40 @@
+sample:
+  sample_id: "TEST_SAMPLE"
+  raw_sample_prefix: "test_sample"
+  run_description: "Synthetic regression test fixture"
+
+paths:
+  input_dir: "PLACEHOLDER_SET_BY_RUN_TESTS_SH"
+  output_dir: "PLACEHOLDER_SET_BY_RUN_TESTS_SH"
+  work_dir: "PLACEHOLDER_SET_BY_RUN_TESTS_SH"
+  repo_dir: "PLACEHOLDER_SET_BY_RUN_TESTS_SH"
+
+reference:
+  config_file: "tests/fixtures/test_reference_paths.yaml"
+
+input_files:
+  sv_vcf: "${sample.raw_sample_prefix}.wf_sv.vcf.gz"
+  cnv_vcf: "${sample.raw_sample_prefix}.wf_cnv.vcf.gz"
+  snv_vcf: "${sample.raw_sample_prefix}.wf_snp.vcf.gz"
+
+filtering:
+  min_sv_length: 30
+  min_read_support: 4
+  min_qual: 20
+  pass_only: true
+  min_vaf: 0.10
+
+sv_categories:
+  deletions: ["DEL"]
+  insertions: ["INS"]
+  duplications: ["DUP"]
+  inversions: ["INV"]
+  translocations: ["BND", "TRA"]
+  complex_rearrangements: ["CPX", "BND_CLUSTER"]
+
+compute:
+  threads: 2
+
+logging:
+  log_dir: "logs"
+  log_level: "INFO"
