@@ -852,6 +852,14 @@ COMPARER="${REPO_DIR}/scripts/bash/10_run_comparison.sh"
 # --- Sheet validation (bash only; no R needed) ---
 SH_DIR="$(mktemp -d "${SCRATCH}/sheets.XXXXXX")"
 
+# Every invocation below MUST pass --config. Without it, 10_run_comparison.sh
+# falls back to config/pipeline_config.yaml — which is GITIGNORED, so it exists
+# on a developer's machine and does not exist in a fresh clone. On CI the script
+# then died in 00_setup_env.sh before ever reaching the sheet validation, so
+# these assertions passed for entirely the wrong reason locally and failed on a
+# clean checkout. A test must not depend on an untracked file.
+SH_CFG="$(make_config valid)/config.yaml"
+
 bash "${COMPARER}" --template "${SH_DIR}/tpl.tsv" >/dev/null 2>&1
 assert_eq "--template exits 0" "0" "$?"
 [[ -s "${SH_DIR}/tpl.tsv" ]] && ok "--template writes a sheet" || bad "--template wrote nothing"
@@ -860,16 +868,16 @@ assert_eq "--template exits 0" "0" "$?"
 assert_eq "template is tab separated" "1" \
           "$(awk -F'\t' 'NR==FNR && /^sample_id/ {print (NF>=4) ? 1 : 0; exit}' "${SH_DIR}/tpl.tsv")"
 
-bash "${COMPARER}" "${SH_DIR}/nonexistent.tsv" >/dev/null 2>&1
+bash "${COMPARER}" "${SH_DIR}/nonexistent.tsv" --config "${SH_CFG}" >/dev/null 2>&1
 assert_eq "missing sheet: exits 1" "1" "$?"
 
 printf 'sample_id\tresults_dir\nONLY_ONE\t/tmp\n' > "${SH_DIR}/one.tsv"
-bash "${COMPARER}" "${SH_DIR}/one.tsv" >/dev/null 2>&1
+bash "${COMPARER}" "${SH_DIR}/one.tsv" --config "${SH_CFG}" >/dev/null 2>&1
 assert_eq "single sample: exits 1" "1" "$?"
 
 # Space- instead of tab-separated header must be rejected with a clear message.
 printf 'sample_id results_dir\nA /tmp\nB /tmp\n' > "${SH_DIR}/spaces.tsv"
-bash "${COMPARER}" "${SH_DIR}/spaces.tsv" >"${SH_DIR}/spaces.out" 2>&1
+bash "${COMPARER}" "${SH_DIR}/spaces.tsv" --config "${SH_CFG}" >"${SH_DIR}/spaces.out" 2>&1
 assert_eq "space-separated sheet: exits 1" "1" "$?"
 grep -q "TAB separated" "${SH_DIR}/spaces.out" \
     && ok "space-separated sheet: message names tabs as the problem" \
