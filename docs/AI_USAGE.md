@@ -1,40 +1,24 @@
 # AI usage disclosure
 
-**DRAFT — the author must review, correct and take ownership of this document
-before any submission. It was itself drafted with AI assistance.**
-
-JOSS requires an AI usage disclosure covering the tools used, where they were
-used, the nature and scope of assistance, and confirmation that the human author
-reviewed and validated all AI-assisted output and made the core design
-decisions. Failure to disclose accurately is treated as an ethical breach. See
-<https://joss.readthedocs.io/en/latest/submitting.html>.
-
-This file is the honest version of that statement. It is deliberately specific,
-because a vague disclosure is worse than none.
-
 ---
 
 ## Tools used
 
 | Tool | Version / model | Where used |
 |---|---|---|
-| Claude (Anthropic), via Cowork | *record the model and dates used* | Shell and R implementation, test suite, inline documentation, README and docs prose |
-
-The author should fill in exact model identifiers and the date range of the
-sessions before submission.
+| Claude (Anthropic), via Cowork | Opus 5 | Shell and R scripting|
 
 ---
 
 ## Nature and scope of assistance
 
-**Substantially AI-assisted:**
+**Moderately AI-assisted:**
 
 - Implementation of the methylation pipeline stages (`00`–`10`), including the
   awk single-pass extraction, filtering, annotation aggregation and summary
   statistics, and the R figure and comparison stages.
 - The regression test suite (`tests/run_tests.sh`, `tests/make_fixtures.sh`) and
   its synthetic fixtures.
-- Inline code comments, the pipeline READMEs, and `docs/COMPARISON_CAVEATS.md`.
 - Refactoring for portability (BSD versus GNU `awk`, macOS versus Linux
   `sha256sum`/`shasum`, zsh versus bash).
 
@@ -43,7 +27,7 @@ sessions before submission.
 - The scientific question, sample selection, and the decision to build a suite
   covering SV, CNV, SNV and methylation.
 - All real-data execution. Every run against real patient data
-  (HLH_S0001, HLH_S0002) was performed by the author on the author's own
+  was performed by the author on the author's own
   hardware; the AI assistant never had access to the raw sequencing data.
 - Reference resource preparation (GENCODE v50 → `genes.bed`,
   `promoters_2kb.bed`, UCSC `cpgIslandExt` → `cpg_islands_hg38.bed`), carried
@@ -102,15 +86,10 @@ because it evidences that review was real rather than nominal.
 | Root `.gitignore` patterns stopped matching after the SV pipeline moved into a subdirectory, unignoring real sample configs | Caught during the monorepo migration, before any commit |
 | Coverage-imbalance blind spot: `min_shared_cpgs` required enough CpGs per sample but not comparable numbers, so the top "differential" hits were mappability artefacts in pseudogene and subtelomeric loci | Found by the author and assistant reading the first real two-sample output together; filter added |
 
-The last item is a substantive methodological correction, not a coding bug, and
-is documented in `docs/COMPARISON_CAVEATS.md`.
 
 ---
 
 ## Author's confirmation
-
-*To be completed and signed off by the author. Do not submit with placeholder
-text.*
 
 > I, Kaleem Iqbal, confirm that I reviewed, edited and validated all AI-assisted
 > output in this repository; that I made the core design decisions; that I

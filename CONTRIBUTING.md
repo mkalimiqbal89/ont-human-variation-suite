@@ -1,7 +1,7 @@
 # Contributing
 
 Thanks for looking. This is research software maintained by one person in a
-clinical genetics research setting, so expectations are set accordingly below
+cancer genomics research setting, so expectations are set accordingly below
 rather than left implicit.
 
 ---
@@ -10,7 +10,7 @@ rather than left implicit.
 
 - **Issues are welcome** and will normally get a first response within two weeks.
 - **This is not a funded project** with dedicated maintenance time. Response may
-  be slower during clinical or teaching commitments.
+  be slower during research project commitments.
 - **Bug reports about correctness take priority** over feature requests. If a
   pipeline produces a wrong number, that is the most important kind of issue you
   can file.
