@@ -48,6 +48,31 @@ jobs:
           done < <(find . -name '*.sh' -not -path './.git/*' | sort)
           exit "$fail"
 
+      # macOS ships bash 3.2 as /bin/bash, so bash-4-only syntax breaks for Mac
+      # users — and breaks QUIETLY. `declare -A` on 3.2 is not an error: the
+      # subscripts are evaluated arithmetically instead, so [deletions] made bash
+      # resolve `deletions` as a variable and abort under set -u, while numeric
+      # keys like [01] silently resolved to 1 and appeared to work.
+      #
+      # A runner cannot easily provide bash 3.2, so grep for the constructs
+      # instead. Cheap, and it fails the build with a specific explanation.
+      - name: No bash-4-only syntax (macOS ships bash 3.2)
+        run: |
+          # shellcheck disable=SC2016
+          patterns='declare -A|local -A|mapfile |readarray |\$\{[A-Za-z_][A-Za-z0-9_]*,,\}|\$\{[A-Za-z_][A-Za-z0-9_]*\^\^\}'
+          hits=$(grep -rnE "${patterns}" --include='*.sh' . \
+                 | grep -v '^\./\.git/' \
+                 | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' || true)
+          if [ -n "${hits}" ]; then
+            echo "Found bash 4+ only syntax:"
+            echo "${hits}" | sed 's/^/  /'
+            echo ""
+            echo "Use a space-separated list plus a case function instead."
+            echo "See CONTRIBUTING.md, 'Code conventions'."
+            exit 1
+          fi
+          echo "  OK: no bash-4-only constructs found"
+
   test:
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

@@ -81,6 +81,13 @@ for the wrong reason until that was verified.
 
 **Portability is not optional.** This runs on macOS (BSD userland) and Linux HPC:
 
+- **No bash 4+ syntax.** macOS ships bash **3.2** as `/bin/bash`, so no
+  associative arrays (`declare -A`), `mapfile`/`readarray`, or `${var,,}` /
+  `${var^^}`. Use a space-separated list plus a `case` function instead. This
+  one bites quietly: on 3.2 `declare -A` is not rejected — the subscripts are
+  evaluated *arithmetically*, so `[deletions]` made bash resolve `deletions` as
+  a variable and abort under `set -u`, while numeric keys like `[01]` silently
+  resolved to `1` and appeared to work. CI greps for these constructs.
 - POSIX awk only. No `gensub`, `asort`, or `length(array)` — BSD awk lacks them.
 - `sha256sum` on Linux, `shasum -a 256` on macOS. Check for both.
 - `wc -l` pads output with spaces on BSD. Pipe through `tr -d ' '`.
