@@ -3,7 +3,7 @@
 A reproducible, config-driven pipeline for genome-wide CpG methylation analysis
 from Oxford Nanopore data processed by the Epi2ME `wf-human-variation` workflow.
 
-Companion to [`ont-sv-pipeline`](../ont-sv-pipeline) and built to the same
+Companion to the [SV pipeline](../sv) and built to the same
 conventions, so that the two can eventually be published as one suite covering
 SV, CNV, SNV and methylation.
 
@@ -305,7 +305,7 @@ were `11_Annotated_CpGs` and `12_Gene_Summary`.
 ## Design notes
 
 Choices here are deliberate, and several were paid for during development of
-`ont-sv-pipeline`:
+the SV pipeline:
 
 - **Tool checks validate output, not just presence.** A binary can sit on
   `PATH` and still be unusable through a broken shared library. Stage 00 checks
@@ -360,7 +360,7 @@ The genome FASTA is **not** required: modkit has already produced the pileup.
 
 ## Sample ID mapping
 
-Kept consistent with `ont-sv-pipeline`:
+Kept consistent with the SV pipeline:
 
 | Pipeline ID | Epi2ME prefix |
 |---|---|
