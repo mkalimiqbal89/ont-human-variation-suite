@@ -70,14 +70,28 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install bedtools htslib bcftools pigz
 
-      # R is needed on PATH because every stage 00 checks for it, and the
-      # methylation figure and comparison stages genuinely run it. No R PACKAGES
-      # are required: the methylation pipeline is deliberately base-R only, and
-      # the SV test suite does not invoke R. That keeps this step fast.
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: 'release'
           use-public-rspm: true
+
+      # The methylation pipeline is deliberately base-R only and needs no
+      # packages. The SV pipeline does need them: its test suite calls
+      # 04_run_all.sh, which runs stages 05-07 in R.
+      #
+      # `repos` is deliberately NOT overridden here. setup-r with
+      # use-public-rspm: true points at Posit Package Manager, which serves
+      # precompiled Linux binaries; forcing repos to cloud.r-project.org would
+      # make ggplot2 and its dependency tree compile from source and turn a
+      # 30-second step into several minutes.
+      - name: Install R packages required by the SV pipeline
+        run: |
+          Rscript -e 'install.packages(c("yaml", "ggplot2", "scales"))'
+          Rscript -e '
+            need <- c("yaml", "ggplot2", "scales")
+            missing <- need[!vapply(need, requireNamespace, logical(1), quietly = TRUE)]
+            if (length(missing)) stop("failed to install: ", paste(missing, collapse = ", "))
+            cat("R packages present:", paste(need, collapse = ", "), "\n")'
 
       - name: Record versions
         run: |
