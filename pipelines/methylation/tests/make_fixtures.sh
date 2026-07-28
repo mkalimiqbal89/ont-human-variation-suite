@@ -36,7 +36,13 @@ base() {
     done
 }
 
-write() { gzip -c > "${FIXTURE_DIR}/${PREFIX}.${1}.wf_mods.bedmethyl.gz"; }
+# -n (--no-name): omit the original filename AND the modification timestamp from
+# the gzip header. Without it, gzip stamps the current time into every file, so
+# regenerating the fixtures produces different BYTES from identical CONTENT and
+# git reports all fourteen as modified after every single test run. That churn
+# hides real changes and invites committing noise. With -n the fixtures are
+# byte-reproducible, so a clean tree after running the tests is meaningful.
+write() { gzip -nc > "${FIXTURE_DIR}/${PREFIX}.${1}.wf_mods.bedmethyl.gz"; }
 
 echo "Writing fixtures to ${FIXTURE_DIR}"
 
