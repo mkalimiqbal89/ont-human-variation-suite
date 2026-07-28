@@ -1,0 +1,124 @@
+name: tests
+
+# Runs both pipelines' regression suites on Linux AND macOS.
+#
+# Testing both is the point, not thoroughness for its own sake. This project is
+# developed on macOS (BSD userland) and run on a Linux HPC, and almost every
+# environment bug it has hit came from that gap: BSD vs GNU awk, `shasum` vs
+# `sha256sum`, `wc -l` padding its output on BSD, `sed -i` semantics, rsync 2.6.9
+# lacking flags that rsync 3.x has. A single-platform CI would have caught none
+# of them.
+#
+# The suites use synthetic fixtures only — no patient data is involved, and
+# nothing here needs secrets.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push supersedes an in-flight run on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    name: shell syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Cheap and dependency-free: catches an unbalanced quote or `fi` before
+      # anyone waits on tool installation.
+      - name: Parse every shell script
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            if bash -n "$f"; then
+              echo "  OK    $f"
+            else
+              echo "  FAIL  $f"
+              fail=1
+            fi
+          done < <(find . -name '*.sh' -not -path './.git/*' | sort)
+          exit "$fail"
+
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false          # report both platforms, don't stop at the first
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            bedtools tabix bcftools pigz
+
+      - name: Install tools (macOS)
+        if: runner.os == 'macOS'
+        run: brew install bedtools htslib bcftools pigz
+
+      # R is needed on PATH because every stage 00 checks for it, and the
+      # methylation figure and comparison stages genuinely run it. No R PACKAGES
+      # are required: the methylation pipeline is deliberately base-R only, and
+      # the SV test suite does not invoke R. That keeps this step fast.
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+          use-public-rspm: true
+
+      - name: Record versions
+        run: |
+          for t in bash awk sort bedtools tabix bgzip bcftools Rscript gzip; do
+            printf '%-10s ' "$t"
+            command -v "$t" >/dev/null 2>&1 \
+              && ("$t" --version 2>&1 | head -1) \
+              || echo "MISSING"
+          done
+          echo "R sanity: $(Rscript -e 'cat(2+2)')  (must be 4)"
+
+      - name: Methylation pipeline tests
+        run: bash pipelines/methylation/tests/run_tests.sh
+
+      - name: SV pipeline tests
+        run: bash pipelines/sv/tests/run_tests.sh
+
+      # The fixtures are gzipped with -n so they carry no timestamp and are
+      # byte-reproducible. If that ever regresses, every test run starts dirtying
+      # the working tree again, which hides real changes. Assert it here rather
+      # than rediscovering it in a confusing `git status`.
+      - name: Fixtures must be byte-reproducible
+        run: |
+          bash pipelines/methylation/tests/make_fixtures.sh >/dev/null
+          if git diff --quiet -- pipelines/methylation/tests/fixtures/; then
+            echo "  OK: regenerating the fixtures produced identical bytes"
+          else
+            echo "  FAIL: fixtures changed when regenerated —"
+            echo "  make_fixtures.sh must gzip with -n so no timestamp is embedded."
+            git diff --stat -- pipelines/methylation/tests/fixtures/
+            exit 1
+          fi
+
+      # The suites write to mktemp directories outside the repo and assert as
+      # much themselves. This is the independent check: a clean tree after a full
+      # test run, on a fresh checkout that has never seen real data.
+      - name: Repository must be clean after testing
+        run: |
+          if git status --porcelain | grep -q .; then
+            echo "  FAIL: the test run modified the working tree:"
+            git status --short
+            exit 1
+          fi
+          echo "  OK: working tree clean"
