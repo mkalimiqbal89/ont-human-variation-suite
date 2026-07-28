@@ -90,7 +90,7 @@ bash pipelines/sv/tests/run_tests.sh
 
 ## Documentation
 
-- [`docs/COMPARISON_CAVEATS.md`](docs/COMPARISON_CAVEATS.md) — **read this before
+- [`pipelines/methylation/docs/COMPARISON_CAVEATS.md`](pipelines/methylation/docs/COMPARISON_CAVEATS.md) — **read this before
   quoting a p-value from the cross-sample comparison.** Pooled-read tests on
   long-read data without biological replication are anti-conservative. The
   document explains why, and what the output is legitimately good for.
