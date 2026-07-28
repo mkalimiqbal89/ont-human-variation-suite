@@ -214,7 +214,7 @@ This repo is structured so real, identifying data never gets committed:
 
 To initialize:
 ```bash
-cd /path/to/ont-sv-pipeline
+cd /path/to/pipelines/sv
 git init
 git add .
 git status   # confirm pipeline_config.yaml / reference_paths.yaml are NOT listed

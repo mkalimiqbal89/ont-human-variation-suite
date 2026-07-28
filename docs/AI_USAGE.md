@@ -21,7 +21,7 @@
   its synthetic fixtures.
 - Refactoring for portability (BSD versus GNU `awk`, macOS versus Linux
   `sha256sum`/`shasum`, zsh versus bash).
-- The regression test suite and fixtures, inline code
+- The inline code
   commentary, the pipeline and suite README, `CONTRIBUTING.md`, `CHANGELOG.md`, and `docs/COMPARISON_CAVEATS.md`. The first draft of this disclosure was also AI-generated and subsequently edited by the author.
 
 **Author-led, not AI-generated:**
