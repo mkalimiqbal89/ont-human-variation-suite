@@ -85,6 +85,13 @@ cpg_islands_hg38*.bed
 !tests/fixtures/
 !tests/fixtures/**
 
+# ...except this one. make_fixtures.sh generates it with ABSOLUTE paths, because
+# the harness runs stages from scratch directories where a repo-relative path
+# would not resolve. That makes it machine-specific, so committing it ships a
+# path that exists only on the author's disk. run_tests.sh regenerates it before
+# every run, so nothing depends on it being present in a fresh clone.
+tests/fixtures/test_reference_paths.yaml
+
 # macOS AppleDouble metadata files (created when copying to/from
 # non-native filesystems, e.g. external drives, network mounts).
 # These appear as ._<filename> and WILL be picked up by input-file globs

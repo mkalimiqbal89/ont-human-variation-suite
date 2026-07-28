@@ -61,8 +61,8 @@ if [[ ${TEMPLATE} -eq 1 ]]; then
 # Tab-separated. sample_id and results_dir are required.
 # Samples may share a results_dir: outputs are sample-prefixed.
 sample_id	label	group	results_dir
-SAMPLE_01	HLH_S0002	case	/Volumes/Extreme_SSD/Bioinformatics_KAL/ont-methylation-pipeline/results
-SAMPLE_02	HLH_S0001	case	/Volumes/Extreme_SSD/Bioinformatics_KAL/ont-methylation-pipeline/results
+SAMPLE_01	control_1	control	/path/to/pipelines/methylation/results
+SAMPLE_02	case_1	case	/path/to/pipelines/methylation/results
 EOF
     echo "Wrote template: ${TPL}"
     exit 0
