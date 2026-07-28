@@ -117,10 +117,21 @@ synthetic fixtures, its own `.gitignore` (patterns are relative to the file's
 directory — keeping them beside the pipeline is what stops a future move from
 unignoring real configs), and a `README.md`.
 
-Shared machinery is currently **duplicated** between pipelines — notably
-`00_setup_env.sh` and its config reader. Factoring that into a `common/`
-directory is planned; a PR doing it cleanly, with both test suites still passing,
-would be welcome.
+Shared machinery lives in [`common/lib_common.sh`](common/lib_common.sh) — the
+YAML config reader, duplicate-key guard, `#`-argument guard, relative/absolute
+path resolution, the `${sample.raw_sample_prefix}` substitution, the tool
+checker, and reference-config resolution. **Source it; do not copy it.**
+
+Each `00_setup_env.sh` starts with a short bootstrap that locates the suite root
+and sources the library — that block cannot itself be shared, since finding the
+library is what it does. Copy it verbatim from an existing pipeline. Everything
+after it should be only your pipeline's own config keys, tool list and output
+directories.
+
+This matters because the two original pipelines each had their own copy and the
+copies diverged: the zsh-safe sourcing fix, the `#`-argument guard and the
+duplicate-key guard existed in one and not the other, so the SV pipeline could
+not be sourced from a macOS zsh prompt for weeks after that was fixed elsewhere.
 
 ---
 

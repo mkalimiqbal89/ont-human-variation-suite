@@ -202,31 +202,32 @@ Run this after modifying any script — it's the fastest way to catch a
 regression before it reaches real data. It runs in seconds against ~30
 lines of synthetic data.
 
-## Setting up version control
+## Keeping identifying data out of git
 
-This repo is structured so real, identifying data never gets committed:
+This pipeline is part of the [ONT Human Variation Suite](../../README.md); the
+repository already exists, so there is nothing to initialise. What matters is
+that real data never gets committed:
 
-- `config/pipeline_config.yaml` and `config/reference_paths.yaml` (the real,
-  per-sample/per-machine files with actual sample identifiers and absolute
-  local paths) are gitignored.
+- `config/pipeline_config.yaml` and `config/reference_paths.yaml` — the real,
+  per-sample/per-machine files with actual sample identifiers and absolute local
+  paths — are gitignored by `pipelines/sv/.gitignore`.
 - `config/pipeline_config.example.yaml` and `config/reference_paths.example.yaml`
-  (sanitized templates) are tracked and are what a fresh clone starts from.
+  (sanitised templates) are tracked and are what a fresh clone starts from.
 
-To initialize:
+The ignore rules live beside the pipeline, not at the suite root, because a
+gitignore pattern containing a slash is anchored to the directory holding the
+file. When this pipeline was first moved into `pipelines/sv/`, the root-level
+patterns stopped matching and the real sample configs briefly became trackable.
+
+Before pushing, check that nothing identifying slipped into the staged content —
+this greps the *content*, not just filenames:
+
 ```bash
-cd /path/to/pipelines/sv
-git init
-git add .
-git status   # confirm pipeline_config.yaml / reference_paths.yaml are NOT listed
-git commit -m "Initial pipeline commit"
-git remote add origin <your-github-repo-url>
-git push -u origin main
+git diff --cached -G'<your_sample_identifier>' --name-only
+git diff --cached -G'/Volumes|/home/|/media/' --name-only
 ```
 
-Before pushing, double check nothing identifying slipped in:
-```bash
-git grep -i "your_sample_id_or_identifying_string_here"
-```
+Both should print nothing.
 
 ## Archiving results (internal use only — never pushed to GitHub)
 

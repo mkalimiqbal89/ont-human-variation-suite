@@ -9,6 +9,56 @@ Notable changes to the ONT Human Variation Suite. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **`common/lib_common.sh`** — shared config reader, duplicate-key guard,
+  argument guard, path resolution and tool checker. Both pipelines now source it
+  instead of carrying their own copies.
+- **`scripts/check_dependencies.sh`** — reports required tools and R packages
+  per pipeline, detects the platform and package manager, and can install what
+  is missing. Runs each tool rather than only testing `PATH`.
+
+### Fixed
+- **`declare -A` removed from both pipelines.** Associative arrays are bash 4+
+  and macOS ships bash 3.2, where the subscripts are evaluated *arithmetically*
+  instead of rejected. In the SV pipeline `[deletions]` made bash resolve
+  `deletions` as a variable and abort under `set -u`, so stage 03 exited 0 having
+  written no category files and stage 05 failed later on a missing input. The
+  methylation orchestrator used numeric keys, so `[01]` silently resolved to `1`
+  and it worked only by accident — adding a stage `08` would have broken it,
+  since `08` is not valid octal. The SV pipeline had therefore never worked on
+  macOS despite `v1.0.0` being verified on Linux.
+- Stage 03 (SV) now asserts it actually produced its category files rather than
+  exiting 0 on an empty loop.
+- The SV `00_setup_env.sh` gained the zsh-safe sourcing fix, the `#`-argument
+  guard and the duplicate-key guard, which previously existed only in the
+  methylation copy.
+
+---
+
+## [0.3.0] — 2026-07-28
+
+### Added
+- **Continuous integration** (`.github/workflows/tests.yml`) running both test
+  suites on `ubuntu-latest` and `macos-latest`, plus a shell syntax pass, an
+  assertion that the fixtures are byte-reproducible, and a check that a full test
+  run leaves the working tree clean. Testing both platforms is the point: this is
+  developed on macOS and run on a Linux HPC, and nearly every environment bug has
+  come from that gap.
+- A CI lint rejecting bash-4-only syntax, since a runner cannot easily provide
+  bash 3.2.
+- `pipelines/methylation/docs/METHODS.md` — rationale for every threshold,
+  grounded in the validation runs.
+
+### Fixed
+- Test fixtures are gzipped with `-n` so they carry no timestamp and regenerate
+  byte-identically; previously every test run dirtied the working tree.
+- Three sheet-validation tests depended on the gitignored real config, so they
+  passed on a developer machine and failed on a clean checkout — and two of them
+  had been passing for the wrong reason.
+- The SV test suite must run from its own directory: its reference config uses
+  relative paths checked with a bare `[[ -f ]]`, which resolves against the cwd.
+- `sed -i` without an argument in the SV test suite, which BSD sed rejects.
+
+### Added
 - **Methylation pipeline** (`pipelines/methylation`), stages 00–10, for CpG
   methylation from `modkit` bedMethyl output.
   - Single-pass extraction of the primary modification code with full-file
