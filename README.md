@@ -58,6 +58,19 @@ The pipelines deliberately look alike, so learning one teaches the others.
 - R 4.3+ — **base graphics and `stats` only; no R packages required**
 - optional: `pigz`, for faster decompression of 600 MB+ inputs
 
+Check what you have and what you are missing in one command:
+
+```bash
+bash scripts/check_dependencies.sh              # report only
+bash scripts/check_dependencies.sh --install    # install what is missing
+bash scripts/check_dependencies.sh --pipeline sv
+```
+
+It detects your platform and package manager, reports each tool per pipeline,
+and checks the R packages the SV stages need. It *runs* each tool rather than
+just looking for it on `PATH` — a binary can be present and still be unusable
+through a broken shared library.
+
 Per-pipeline conda environments are provided as `environment.yml`.
 
 Developed and tested on macOS (Apple silicon, BSD userland) and Linux HPC. Both
