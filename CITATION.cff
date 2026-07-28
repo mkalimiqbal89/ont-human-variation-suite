@@ -1,10 +1,37 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "ONT Structural Variation Categorization Pipeline"
+title: "ONT Human Variation Suite: reproducible downstream pipelines for Oxford Nanopore wf-human-variation output"
+abstract: >-
+  A suite of config-driven, test-covered pipelines for downstream analysis of
+  Oxford Nanopore sequencing processed by the Epi2ME wf-human-variation workflow.
+  Each variant class is handled by its own pipeline sharing common conventions:
+  structural variants (Sniffles2 VCF categorisation, gene fusion and disruption
+  classification) and CpG methylation (modkit bedMethyl extraction, per-site
+  filtering, gene/promoter/CpG-island aggregation, and cross-sample comparison).
+  Copy number and small variant pipelines are planned.
 authors:
   - family-names: "Iqbal"
     given-names: "Kaleem"
-repository-code: "https://github.com/mkalimiqbal89/ONT-Structural-Variations-Categorization-Pipeline"
+    email: "mkalimiqbal89@gmail.com"
+repository-code: "https://github.com/mkalimiqbal89/ont-human-variation-suite"
 license: MIT
-version: 1.0.0
-date-released: "2026-07-26"
+version: 0.2.0
+date-released: "2026-07-28"
+keywords:
+  - oxford-nanopore
+  - long-read-sequencing
+  - structural-variants
+  - dna-methylation
+  - bioinformatics-pipeline
+  - epi2me
+  - reproducible-research
+references:
+  - type: software
+    title: "Sniffles2"
+    notes: "Structural variant caller used upstream by wf-human-variation"
+  - type: software
+    title: "modkit"
+    notes: "Produces the bedMethyl pileup consumed by the methylation pipeline"
+  - type: software
+    title: "bedtools"
+    notes: "Interval arithmetic for annotation"

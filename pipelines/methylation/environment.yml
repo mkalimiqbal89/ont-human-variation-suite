@@ -1,0 +1,27 @@
+# Conda environment for the ONT Epi2ME Methylation Pipeline
+# Create with:   conda env create -f environment.yml
+# Activate with: conda activate ont-methylation-pipeline
+#
+# Note: bcftools is deliberately absent. This pipeline never touches a VCF —
+# modkit has already produced a bedMethyl pileup, so the work is BED-interval
+# arithmetic (bedtools) and tabular aggregation (awk / data.table).
+name: ont-methylation-pipeline
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - bedtools=2.31
+  - htslib          # provides bgzip and tabix
+  - tabix
+  - pigz            # parallel gzip; large speedup on 600 MB+ bedMethyl files
+  - r-base>=4.3
+  - r-tidyverse
+  - r-data.table    # required: gene/promoter tables run to ~10^5 rows per sample
+  - r-yaml
+  - r-ggplot2
+  - r-scales
+  - r-optparse
+  - r-jsonlite
+  - r-rmarkdown
+  - bioconductor-genomicranges

@@ -1,0 +1,175 @@
+# =============================================================================
+# pipeline_config.example.yaml
+# Template config — copy to pipeline_config.yaml (or pipeline_config_<sample>.yaml)
+# and fill in real values. The real file is gitignored; this template is not.
+#
+# IMPORTANT: 00_setup_env.sh reads this file with a grep-based yaml_get(), which
+# returns the FIRST line matching "^<whitespace>key:". Every key read by the
+# scripts must therefore be UNIQUE across the whole file. Do not introduce a
+# duplicate key name in a different section.
+# =============================================================================
+
+sample:
+  sample_id: "SAMPLE_01"
+  raw_sample_prefix: "REPLACE_WITH_ACTUAL_EPI2ME_OUTPUT_PREFIX"
+  run_description: "e.g. PromethION2i 72h WGS, SQK-LSKv114, blood-derived gDNA"
+
+paths:
+  input_dir: "/path/to/epi2me/output/directory"
+  output_dir: "/path/to/this/repo/results"
+  work_dir: "/path/to/this/repo/work"
+  repo_dir: "/path/to/this/repo"
+
+reference:
+  config_file: "config/reference_paths.yaml"
+
+input_files:
+  # Filenames as produced by wf-human-variation (relative to paths.input_dir).
+  # Confirm the actual names in your output with:
+  #   find $INPUT_DIR -iname "*bedmethyl*"
+  #
+  # An unphased run produces ONE combined file:
+  #   <prefix>.wf_mods.bedmethyl.gz
+  # A phased run (--phased) produces THREE haplotype-split files instead:
+  #   <prefix>.wf_mods.1.bedmethyl.gz
+  #   <prefix>.wf_mods.2.bedmethyl.gz
+  #   <prefix>.wf_mods.ungrouped.bedmethyl.gz
+  #
+  # Set modifications.phased to match, and 01_validate_inputs.sh will check for
+  # the correct set. Unused entries are ignored, so both may be left in place.
+  mod_bedmethyl: "${sample.raw_sample_prefix}.wf_mods.bedmethyl.gz"
+  mod_bedmethyl_hap1: "${sample.raw_sample_prefix}.wf_mods.1.bedmethyl.gz"
+  mod_bedmethyl_hap2: "${sample.raw_sample_prefix}.wf_mods.2.bedmethyl.gz"
+  mod_bedmethyl_ungrouped: "${sample.raw_sample_prefix}.wf_mods.ungrouped.bedmethyl.gz"
+  # Optional context files, used only for QC cross-checks.
+  mosdepth_summary: "${sample.raw_sample_prefix}.mosdepth.summary.txt"
+
+modifications:
+  # false = single combined .wf_mods.bedmethyl.gz
+  # true  = haplotype-split .1 / .2 / .ungrouped files
+  phased: false
+  # The modification code every single-value summary and figure is keyed to.
+  # m = 5-methylcytosine (5mC), h = 5-hydroxymethylcytosine (5hmC), a = 6mA.
+  primary_mod_code: "m"
+  # Additional codes present in the file. Reported in QC but not analysed as
+  # the primary signal.
+  secondary_mod_codes: ["h"]
+  # Column count expected from modkit pileup bedMethyl output.
+  expected_columns: 18
+
+filtering:
+  # Minimum valid coverage (bedMethyl column 10) for a site to be retained.
+  min_coverage: 10
+  # Upper coverage cap to drop pileup artefacts. 0 disables the cap.
+  max_coverage: 0
+
+  # ---- Contig selection -----------------------------------------------------
+  # Two mutually exclusive mechanisms. Exactly one is active, and the stage log
+  # states which, so there is never any doubt about what was analysed.
+  #
+  # primary_contigs_only: true   -> ALLOWLIST. Keep only contigs matching
+  #                                 include_contigs_regex. exclude_contigs_regex
+  #                                 is ignored entirely.
+  # primary_contigs_only: false  -> BLOCKLIST. Drop contigs matching
+  #                                 exclude_contigs_regex, keep everything else.
+  #
+  # Prefer the allowlist. A blocklist can only reject the junk naming patterns
+  # you thought to enumerate; GRCh38 analysis sets ship scaffolds such as
+  # GL000191.1, HLA-A*01:01:01:01 and *_fix that match none of the usual ones.
+  primary_contigs_only: true
+
+  # chr1-22, chrX, chrY. Deliberately excludes chrM: mitochondrial DNA is
+  # essentially unmethylated in mammals yet carries extreme coverage, so leaving
+  # it in drags the coverage-weighted genome-wide average down. Add |M inside
+  # the group to include it.
+  # For an Ensembl-style reference use: "^([1-9]|1[0-9]|2[0-2]|X|Y)$"
+  include_contigs_regex: "^chr([1-9]|1[0-9]|2[0-2]|X|Y)$"
+
+  # Warns (does not fail) if the retained contig count differs. 23 instead of 24
+  # usually means chrY carried no calls, which is expected for a female sample.
+  expected_primary_contigs: 24
+
+  # Only consulted when primary_contigs_only is false.
+  exclude_contigs_regex: "(_random$|^chrUn|_alt$|^chrEBV$|^chrM$)"
+
+methylation_states:
+  # Per-site methylation state bins, applied by stage 03. These are the
+  # methylation analogue of the SV pipeline's sv_categories: each state is
+  # written to its own file so it can be inspected or loaded into IGV alone.
+  #
+  #   unmethylated  : percent <  unmethylated_max_percent
+  #   intermediate  : between the two thresholds
+  #   methylated    : percent >= methylated_min_percent
+  #
+  # 20/80 is the conventional split. The intermediate class is the interesting
+  # one: at adequate coverage a CpG sitting near 50% is a candidate for
+  # allele-specific methylation or imprinting, rather than noise.
+  unmethylated_max_percent: 20
+  methylated_min_percent: 80
+
+annotation:
+  # Features with fewer covered CpGs than this are unreliable — a locus backed
+  # by one or two CpGs can read 0% or 100% by chance. Reported but flagged.
+  min_cpgs_per_feature: 5
+  # Aggregate genes on gene_id, not gene_name: GENCODE symbols are not unique.
+  gene_key: "gene_id"
+  # The per-CpG annotated intermediates (one row per CpG-feature overlap) run to
+  # several GB for a whole genome and are regenerated by stage 05 in minutes.
+  # The per-feature summaries are always written; set this to true only when
+  # debugging an annotation problem.
+  keep_annotated_cpgs: false
+
+comparison:
+  # Cross-sample comparison (stages 09/10). Applied per feature.
+  #
+  # A feature is only compared where EVERY sample has at least this many covered
+  # CpGs in it. Comparing a locus backed by 2 CpGs in one sample and 40 in
+  # another produces a difference that is about coverage, not biology.
+  min_shared_cpgs: 5
+
+  # min_shared_cpgs is not sufficient on its own: it requires enough CpGs in each
+  # sample but not COMPARABLE numbers. A promoter with 10 covered CpGs in one
+  # sample and 173 in the other differs in mappability, not methylation. Features
+  # exceeding either ratio are reported but labelled "imbalanced", never
+  # "differential".
+  max_cpg_ratio: 3
+  max_coverage_ratio: 5
+
+  # Minimum absolute difference in coverage-weighted methylation, in percentage
+  # points, for a feature to be called differentially methylated.
+  min_delta_percent: 20
+  fdr_alpha: 0.05
+  # fisher = exact test on pooled modified/unmodified read counts (2 samples)
+  # chisq  = chi-squared across samples (works for 2 or more)
+  # none   = report effect sizes only, no p-values
+  #
+  # READ THE CAVEAT IN docs/COMPARISON_CAVEATS.md BEFORE QUOTING P-VALUES.
+  stat_test: fisher
+  top_n_report: 100
+
+report:
+  # PNG geometry for stage 07. 150 dpi at these dimensions gives roughly a
+  # 13 x 9 cm figure at print resolution.
+  fig_width: 2000
+  fig_height: 1400
+  fig_res: 150
+  # How many gene_type categories to show in the by-type figure.
+  top_n_gene_types: 12
+
+compute:
+  threads: 8
+
+logging:
+  log_dir: "logs"
+  log_level: "INFO"
+
+archive:
+  # Internal, non-public longitudinal record of every sample this pipeline
+  # has processed. Never pushed to GitHub — this path lives on institutional
+  # storage only. Leave archive_root empty/unset to disable archiving.
+  archive_root: "/path/to/internal/archive/root"
+  compress: false
+  # The *.all_cov.* file is a pure intermediate: several hundred MB per sample
+  # and reproducible from the raw bedMethyl in minutes. The archive keeps the
+  # coverage-filtered file, which is what every downstream stage consumed.
+  include_intermediates: false

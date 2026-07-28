@@ -1,0 +1,38 @@
+# =============================================================================
+# reference_paths.example.yaml
+# Template config — copy to reference_paths.yaml and fill in real paths.
+# The real file is gitignored (machine-specific absolute paths); this
+# template is not.
+#
+# These are SHARED resources: built once, reused by every project and every
+# pipeline in the suite. Do not duplicate them per project.
+# =============================================================================
+
+genome:
+  # The methylation pipeline works from modkit's bedMethyl pileup, so the
+  # genome FASTA is NOT required. It is recorded here for provenance only and
+  # may be left empty.
+  fasta: ""
+  build: "GRCh38"
+  # Two-column TSV (contig<TAB>length). Required: used for promoter generation
+  # and for contig validation.
+  chrom_sizes: "/path/to/References/GRCh38/hg38.chrom.sizes"
+
+annotation:
+  # BED7 from the GENCODE GTF:
+  #   chrom, start, end, gene_id, gene_name, gene_type, strand
+  gene_bed: "/path/to/References/GENCODE/genes.bed"
+  # BED7, TSS +/- 2 kb, strand-aware, clipped to chromosome bounds by
+  # `bedtools slop`. Same column layout as gene_bed.
+  promoter_bed: "/path/to/References/GENCODE/promoters_2kb.bed"
+  # BED10 from the UCSC cpgIslandExt table, internal index column removed and
+  # whitespace in the island name replaced with underscores.
+  cpg_island_bed: "/path/to/References/CpG_Islands/cpg_islands_hg38.bed"
+  # Source GTF, recorded for provenance and version reporting.
+  gencode_gtf: "/path/to/References/GENCODE/gencode.v50.annotation.gtf.gz"
+
+tools:
+  bedtools: "bedtools"
+  tabix: "tabix"
+  bgzip: "bgzip"
+  R: "Rscript"
