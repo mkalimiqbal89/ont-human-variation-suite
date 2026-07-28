@@ -106,7 +106,7 @@ Per-pipeline methods rationale lives in each pipeline's `docs/METHODS.md`.
 
 ## Status and scope
 
-Research software developed in a clinical genetics research setting, currently
+Research software developed in a cancer genomics research setting, currently
 applied to haemophagocytic lymphohistiocytosis (HLH) samples. Offered in the hope
 it is useful to others working downstream of `wf-human-variation`.
 
