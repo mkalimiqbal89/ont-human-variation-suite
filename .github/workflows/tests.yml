@@ -106,8 +106,16 @@ jobs:
       - name: Methylation pipeline tests
         run: bash pipelines/methylation/tests/run_tests.sh
 
+      # Run from inside the pipeline directory. The SV test reference config
+      # (tests/fixtures/test_reference_paths.yaml) uses paths RELATIVE to the
+      # pipeline root, and 01_validate_inputs.sh checks them with a bare
+      # `[[ -f "$f" ]]`, which resolves against the current working directory.
+      # Invoked from the repository root those files are not found and every
+      # reference check reports [MISS]. The methylation suite is unaffected: it
+      # generates its reference config with absolute paths at run time.
       - name: SV pipeline tests
-        run: bash pipelines/sv/tests/run_tests.sh
+        working-directory: pipelines/sv
+        run: bash tests/run_tests.sh
 
       # The fixtures are gzipped with -n so they carry no timestamp and are
       # byte-reproducible. If that ever regresses, every test run starts dirtying

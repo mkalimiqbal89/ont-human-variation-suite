@@ -45,7 +45,11 @@ sed \
   "${FIXTURES_DIR}/test_pipeline_config.yaml" > "${TEST_CONFIG}"
 
 # logs/ referenced relative to repo_dir by 00_setup_env.sh; point it at scratch
-sed -i "s|log_dir:.*|log_dir: \"${RUN_DIR}/logs\"|" "${TEST_CONFIG}"
+# -i.bak, not bare -i: BSD sed on macOS requires an argument to -i and would
+# otherwise consume the script expression as the backup suffix, then fail. GNU
+# sed accepts both. The .bak file is removed immediately.
+sed -i.bak "s|log_dir:.*|log_dir: \"${RUN_DIR}/logs\"|" "${TEST_CONFIG}"
+rm -f "${TEST_CONFIG}.bak"
 
 echo "Generated test config: ${TEST_CONFIG}"
 echo ""
