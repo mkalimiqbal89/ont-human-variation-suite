@@ -73,22 +73,42 @@ N_INPUT=$(( $(wc -l < "${FLAT_TSV}") - 1 ))
 N_PASS=$(( $(wc -l < "${FILTERED_TSV}") - 1 ))
 echo "Input records: ${N_INPUT}  ->  Passing filters: ${N_PASS}"
 
-declare -A CATEGORY_MAP=(
-    [deletions]="DEL"
-    [insertions]="INS"
-    [duplications]="DUP"
-    [inversions]="INV"
-    [translocations]="BND TRA"
-    [complex_rearrangements]="CPX BND_CLUSTER"
-)
+# A list plus a case function, NOT an associative array.
+#
+# Associative arrays are a bash 4 feature, and macOS ships bash 3.2 as
+# /bin/bash. On 3.2 `declare -A` is not supported, so `[deletions]="DEL"` is
+# parsed as an INDEXED subscript and evaluated arithmetically; bash then tries
+# to resolve `deletions` as a variable and `set -u` aborts the script with
+# "deletions: unbound variable".
+#
+# The failure was near-silent: this stage exited 0 having written no category
+# files at all, and stage 05 failed later on the missing translocations file.
+# A stage that reports success while producing nothing is the exact failure
+# class the testing philosophy in CONTRIBUTING.md is written against.
+#
+# Iterating a fixed list also makes the output order deterministic, which
+# associative-array iteration was not.
+SV_CATEGORY_LIST="deletions insertions duplications inversions translocations complex_rearrangements"
+
+svtypes_for_category() {
+    case "$1" in
+        deletions)              echo "DEL" ;;
+        insertions)             echo "INS" ;;
+        duplications)           echo "DUP" ;;
+        inversions)             echo "INV" ;;
+        translocations)         echo "BND TRA" ;;
+        complex_rearrangements) echo "CPX BND_CLUSTER" ;;
+        *)                      echo "" ;;
+    esac
+}
 
 HEADER=$(head -1 "${FILTERED_TSV}")
 QC_SUMMARY="${OUTPUT_DIR}/qc_summary/${SAMPLE_ID}.filtering_summary.tsv"
 mkdir -p "${OUTPUT_DIR}/qc_summary"
 echo -e "category\tsvtypes_included\tn_variants" > "${QC_SUMMARY}"
 
-for category in "${!CATEGORY_MAP[@]}"; do
-    svtypes="${CATEGORY_MAP[$category]}"
+for category in ${SV_CATEGORY_LIST}; do
+    svtypes="$(svtypes_for_category "${category}")"
     out_file="${OUTPUT_DIR}/${category}/${SAMPLE_ID}.${category}.tsv"
     mkdir -p "${OUTPUT_DIR}/${category}"
 
@@ -101,6 +121,25 @@ for category in "${!CATEGORY_MAP[@]}"; do
     echo "  ${category} (${svtypes}): ${n} variants -> ${out_file}"
     echo -e "${category}\t${svtypes}\t${n}" >> "${QC_SUMMARY}"
 done
+
+# --- The loop must actually have produced its outputs ------------------------
+# Without this, a failure inside the loop leaves the stage exiting 0 having
+# written nothing, and the problem only surfaces two stages later as
+# "translocations.tsv not found" — which points at the wrong script. That is
+# exactly what happened when `declare -A` failed silently on bash 3.2.
+missing_categories=""
+for category in ${SV_CATEGORY_LIST}; do
+    [[ -f "${OUTPUT_DIR}/${category}/${SAMPLE_ID}.${category}.tsv" ]] \
+        || missing_categories="${missing_categories} ${category}"
+done
+if [[ -n "${missing_categories}" ]]; then
+    echo "" >&2
+    echo "[FATAL] No output file written for:${missing_categories}" >&2
+    echo "        The categorization loop did not run to completion. This stage" >&2
+    echo "        cannot succeed without these files, so it fails here rather" >&2
+    echo "        than letting a later stage report a confusing missing input." >&2
+    exit 1
+fi
 
 FUSION_CANDIDATES="${OUTPUT_DIR}/gene_fusions/${SAMPLE_ID}.gene_fusion_candidates.tsv"
 mkdir -p "${OUTPUT_DIR}/gene_fusions"

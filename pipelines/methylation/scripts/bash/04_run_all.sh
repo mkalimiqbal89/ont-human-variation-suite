@@ -55,29 +55,48 @@ CONFIG_FILE="${CONFIG_ARG:-${REPO_DIR}/config/pipeline_config.yaml}"
 
 # --- Stage table -------------------------------------------------------------
 # id : script path relative to the repo : description
-STAGE_IDS=(01 02 03 05 06 07)
-declare -A STAGE_SCRIPT=(
-    [01]="scripts/bash/01_validate_inputs.sh"
-    [02]="scripts/bash/02_bedmethyl_to_tsv.sh"
-    [03]="scripts/bash/03_filter_cpg_sites.sh"
-    [05]="scripts/bash/05_annotate_regions.sh"
-    [06]="scripts/bash/06_summary_stats.sh"
-    [07]="scripts/R/07_generate_report.R"
-)
-declare -A STAGE_DESC=(
-    [01]="Validate inputs and reference bundle"
-    [02]="Extract primary mod code, single full pass"
-    [03]="Coverage filter and methylation-state splits"
-    [05]="Gene / promoter / CpG-island aggregation"
-    [06]="Global, distribution, chromosome, feature-class tables"
-    [07]="Publication figures"
-)
+# A list plus case functions, NOT associative arrays.
+#
+# Associative arrays are a bash 4 feature and macOS ships bash 3.2. This table
+# previously used `declare -A` with NUMERIC keys, which happened to survive on
+# 3.2 because an indexed subscript is evaluated arithmetically and [01] resolves
+# to 1 — so it worked entirely by accident. The equivalent table in the SV
+# pipeline used word keys, where [deletions] made bash resolve `deletions` as a
+# variable and `set -u` aborted the stage.
+#
+# The accident was also fragile: adding a stage 08 or 09 would have broken it,
+# because 08 is not a valid octal literal ("value too great for base").
+STAGE_IDS="01 02 03 05 06 07"
+
+stage_script() {
+    case "$1" in
+        01) echo "scripts/bash/01_validate_inputs.sh" ;;
+        02) echo "scripts/bash/02_bedmethyl_to_tsv.sh" ;;
+        03) echo "scripts/bash/03_filter_cpg_sites.sh" ;;
+        05) echo "scripts/bash/05_annotate_regions.sh" ;;
+        06) echo "scripts/bash/06_summary_stats.sh" ;;
+        07) echo "scripts/R/07_generate_report.R" ;;
+        *)  echo "" ;;
+    esac
+}
+
+stage_desc() {
+    case "$1" in
+        01) echo "Validate inputs and reference bundle" ;;
+        02) echo "Extract primary mod code, single full pass" ;;
+        03) echo "Coverage filter and methylation-state splits" ;;
+        05) echo "Gene / promoter / CpG-island aggregation" ;;
+        06) echo "Global, distribution, chromosome, feature-class tables" ;;
+        07) echo "Publication figures" ;;
+        *)  echo "" ;;
+    esac
+}
 
 if [[ ${LIST_ONLY} -eq 1 ]]; then
     echo "Stages:"
-    for id in "${STAGE_IDS[@]}"; do
-        avail="present"; [[ -f "${REPO_DIR}/${STAGE_SCRIPT[$id]}" ]] || avail="NOT YET WRITTEN"
-        printf "  %s  %-52s %-12s %s\n" "${id}" "${STAGE_DESC[$id]}" "[${avail}]" "${STAGE_SCRIPT[$id]}"
+    for id in ${STAGE_IDS}; do
+        avail="present"; [[ -f "${REPO_DIR}/$(stage_script "${id}")" ]] || avail="NOT YET WRITTEN"
+        printf "  %s  %-52s %-12s %s\n" "${id}" "$(stage_desc "${id}")" "[${avail}]" "$(stage_script "${id}")"
     done
     exit 0
 fi
@@ -123,10 +142,10 @@ in_range() {
 }
 
 TO_RUN=()
-for id in "${STAGE_IDS[@]}"; do
+for id in ${STAGE_IDS}; do
     in_range "${id}" || continue
-    if [[ ! -f "${REPO_DIR}/${STAGE_SCRIPT[$id]}" ]]; then
-        echo "[SKIP] stage ${id} (${STAGE_DESC[$id]}) — not yet written"
+    if [[ ! -f "${REPO_DIR}/$(stage_script "${id}")" ]]; then
+        echo "[SKIP] stage ${id} ($(stage_desc "${id}")) — not yet written"
         continue
     fi
     TO_RUN+=("${id}")
@@ -142,7 +161,7 @@ echo ""
 
 if [[ ${DRY_RUN} -eq 1 ]]; then
     for id in "${TO_RUN[@]}"; do
-        printf "  would run  %s  %s\n" "${id}" "${STAGE_SCRIPT[$id]}"
+        printf "  would run  %s  %s\n" "${id}" "$(stage_script "${id}")"
     done
     echo ""
     echo "Dry run — nothing executed."
@@ -212,9 +231,9 @@ OVERALL_RC=0
 T_ALL0=$(date +%s)
 
 for id in "${TO_RUN[@]}"; do
-    script="${REPO_DIR}/${STAGE_SCRIPT[$id]}"
+    script="${REPO_DIR}/$(stage_script "${id}")"
     echo "------------------------------------------------------------"
-    echo ">>> Stage ${id}: ${STAGE_DESC[$id]}"
+    echo ">>> Stage ${id}: $(stage_desc "${id}")"
     echo "------------------------------------------------------------"
     t0=$(date +%s)
 
@@ -265,7 +284,7 @@ echo "============================================================"
 printf "  %-6s %-52s %-14s %s\n" "Stage" "Description" "Status" "Time"
 for i in "${!RESULT_ID[@]}"; do
     id="${RESULT_ID[$i]}"
-    printf "  %-6s %-52s %-14s %ss\n" "${id}" "${STAGE_DESC[$id]}" "${RESULT_STATUS[$i]}" "${RESULT_SECS[$i]}"
+    printf "  %-6s %-52s %-14s %ss\n" "${id}" "$(stage_desc "${id}")" "${RESULT_STATUS[$i]}" "${RESULT_SECS[$i]}"
 done
 echo ""
 printf "  Total: %ss\n" "$((T_ALL1 - T_ALL0))"
