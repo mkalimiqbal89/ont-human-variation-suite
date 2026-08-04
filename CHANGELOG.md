@@ -150,3 +150,8 @@ Notable changes to the ONT Human Variation Suite. Format loosely follows
 - Validated against two clinical research samples.
 
 *Released while the repository was named `ont_structural_variations_pipeline`.*
+
+## [1.0.1] - 2026-08-04
+### Changed
+- Metadata release to enable Zenodo archiving and DOI minting.
+- No functional changes to pipeline scripts.
