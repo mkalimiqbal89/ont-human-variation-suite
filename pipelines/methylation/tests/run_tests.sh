@@ -702,12 +702,12 @@ assert_eq "archive exits 0" "0" "$?"
 assert_eq "archive: no OTHER_SAMPLE files" "0" \
           "$(find "${D9}/archive" -name 'OTHER_SAMPLE*' | wc -l | tr -d ' ')"
 assert_eq "archive: no unprefixed shared file" "0" \
-          "$(find "${D9}/archive/"*/*/results -type f ! -name 'TEST_01.*' 2>/dev/null | wc -l | tr -d ' ')"
+          "$(find "${D9}/archive/"*/*/*/results -type f ! -name 'TEST_01.*' 2>/dev/null | wc -l | tr -d ' ')"
 # Large regenerable intermediate excluded by default.
 assert_eq "archive: all_cov excluded by default" "0" \
           "$(find "${D9}/archive" -name '*all_cov*' | wc -l | tr -d ' ')"
 assert_eq "archive: 3 result files" "3" \
-          "$(find "${D9}/archive/"*/*/results -type f | wc -l | tr -d ' ')"
+          "$(find "${D9}/archive/"*/*/*/results -type f | wc -l | tr -d ' ')"
 
 # Checksums must exist AND verify against what was written.
 CK="$(find "${D9}/archive" -name checksums.sha256 | head -n1)"
@@ -740,7 +740,7 @@ if [[ -s "${PV}" ]]; then
     assert_eq "provenance: records checksum status" "verified:5" \
               "$(awk -F'\t' '$1=="checksums" {print $2}' "${PV}")"
 fi
-IDX="${D9}/archive/archive_index.tsv"
+IDX="${D9}/archive/archive_index_methylation.tsv"
 [[ -s "${IDX}" ]] && ok "archive: index created" || bad "archive: index missing"
 assert_eq "index: one run recorded" "1" "$(awk 'NR>1' "${IDX}" | wc -l | tr -d ' ')"
 
@@ -751,7 +751,7 @@ bash "${ARCHIVER}" "${D9}/config.yaml" >/dev/null 2>&1
 assert_eq "second archive exits 0" "0" "$?"
 assert_eq "index: two runs recorded" "2" "$(awk 'NR>1' "${IDX}" | wc -l | tr -d ' ')"
 assert_eq "archive: two run directories kept" "2" \
-          "$(find "${D9}/archive/TEST_01" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+          "$(find "${D9}/archive/TEST_01" -mindepth 2 -maxdepth 2 -type d | wc -l | tr -d ' ')"
 
 # include_intermediates=true must pull the all_cov file in.
 D9B="$(setup_archive 's|^  include_intermediates: false|  include_intermediates: true|')"
@@ -766,7 +766,7 @@ rm -f "${D9C}/results/01_filtered/TEST_01."* "${D9C}/results/02_qc/TEST_01."* \
 bash "${ARCHIVER}" "${D9C}/config.yaml" >/dev/null 2>&1
 assert_eq "no matching files: exits 1" "1" "$?"
 assert_eq "no matching files: no index created" "0" \
-          "$([[ -f "${D9C}/archive/archive_index.tsv" ]] && echo 1 || echo 0)"
+          "$([[ -f "${D9C}/archive/archive_index_methylation.tsv" ]] && echo 1 || echo 0)"
 
 # Placeholder archive_root must be treated as "archiving disabled", not an error.
 D9D="$(setup_archive 's|^  archive_root: .*|  archive_root: "/path/to/internal/archive/root"|')"

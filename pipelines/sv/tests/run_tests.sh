@@ -136,7 +136,7 @@ mkdir -p "${RUN_DIR}/archive"
 
 bash "${REPO_DIR}/scripts/bash/08_archive_results.sh" "${TEST_CONFIG}" > /dev/null 2>&1
 
-ARCHIVE_INDEX="${RUN_DIR}/archive/archive_index.tsv"
+ARCHIVE_INDEX="${RUN_DIR}/archive/archive_index_sv.tsv"
 if [[ -f "${ARCHIVE_INDEX}" ]]; then
     n_del_archived=$(awk -F'\t' 'NR>1 && $2=="TEST_SAMPLE" {print $5}' "${ARCHIVE_INDEX}" | tail -1)
     if [[ "${n_del_archived}" -eq 2 ]]; then
@@ -156,7 +156,7 @@ if [[ -f "${ARCHIVE_INDEX}" ]]; then
         FAIL=$((FAIL+1))
     fi
 else
-    echo "FAIL: archive_index.tsv was not created — archiving step itself failed"
+    echo "FAIL: archive_index_sv.tsv was not created — archiving step itself failed"
     FAIL=$((FAIL+1))
 fi
 
