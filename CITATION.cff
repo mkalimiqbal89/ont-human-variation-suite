@@ -35,3 +35,10 @@ references:
   - type: software
     title: "bedtools"
     notes: "Interval arithmetic for annotation"
+version: 1.0.1
+date-released: 2026-08-04
+doi: 10.5281/zenodo.21600726
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.21787934
+    description: Archived snapshot of version 1.0.1

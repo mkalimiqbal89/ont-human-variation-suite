@@ -9,6 +9,7 @@ workflow.
 tables, figures and archived records, and compares samples to one another — with
 the assertions and provenance needed for that work to be defensible.
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21600726.svg)](https://doi.org/10.5281/zenodo.21600726)
 ---
 
 ## Pipelines
