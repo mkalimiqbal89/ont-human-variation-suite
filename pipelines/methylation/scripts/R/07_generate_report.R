@@ -37,6 +37,7 @@ repo_dir <- if (!is.na(script_path)) {
 } else {
   normalizePath(".")
 }
+suite_dir <- normalizePath(file.path(repo_dir, "..", ".."))
 
 config_file <- if (length(args) >= 1) args[1] else
   file.path(repo_dir, "config", "pipeline_config.yaml")
@@ -48,22 +49,17 @@ if (!file.exists(config_file)) {
 cat("=== [07_generate_report.R] Using config:", config_file, "===\n")
 
 # --- Minimal config reader ---------------------------------------------------
-# Mirrors yaml_get() in 00_setup_env.sh: first line matching "^\s*key:".
-cfg_lines <- readLines(config_file, warn = FALSE)
-cfg_get <- function(key, default = NULL) {
-  pat <- paste0("^[[:space:]]*", key, ":")
-  hit <- grep(pat, cfg_lines, value = TRUE)
-  if (!length(hit)) {
-    if (is.null(default)) {
-      stop("Config key not found and no default: ", key, call. = FALSE)
-    }
-    return(default)
-  }
-  v <- sub("^[^:]*:[[:space:]]*", "", hit[1])
-  v <- sub("[[:space:]]*(#.*)?$", "", v)
-  gsub('^"|"$', "", v)
+# Mirrors common_yaml_get() in common/lib_common.sh: first line matching
+# "^\s*key:". Shared with 09_compare_samples.R via R/lib/lib_common.R rather
+# than each stage defining its own copy.
+lib_common_r <- file.path(suite_dir, "R", "lib", "lib_common.R")
+if (!file.exists(lib_common_r)) {
+  stop("Cannot find ", lib_common_r, call. = FALSE)
 }
-cfg_num <- function(key, default) as.numeric(cfg_get(key, as.character(default)))
+source(lib_common_r)
+cfg_lines <- readLines(config_file, warn = FALSE)
+cfg_get <- cfg_get_factory(cfg_lines)
+cfg_num <- cfg_num_factory(cfg_get)
 
 sample_id  <- cfg_get("sample_id")
 output_dir <- cfg_get("output_dir")
