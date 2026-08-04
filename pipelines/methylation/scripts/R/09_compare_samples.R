@@ -40,6 +40,7 @@ script_path <- (function() {
 repo_dir <- if (!is.na(script_path)) {
   normalizePath(file.path(dirname(script_path), "..", ".."))
 } else normalizePath(".")
+suite_dir <- normalizePath(file.path(repo_dir, "..", ".."))
 
 config_file <- if (length(args) >= 3) args[3] else
   file.path(repo_dir, "config", "pipeline_config.yaml")
@@ -55,16 +56,15 @@ cat("Sample sheet:", sheet_file, "\n")
 cat("Output       :", out_dir, "\n")
 
 # --- Config ------------------------------------------------------------------
-cfg_lines <- readLines(config_file, warn = FALSE)
-cfg_get <- function(key, default = NULL) {
-  hit <- grep(paste0("^[[:space:]]*", key, ":"), cfg_lines, value = TRUE)
-  if (!length(hit)) {
-    if (is.null(default)) stop("Config key missing: ", key, call. = FALSE)
-    return(default)
-  }
-  v <- sub("^[^:]*:[[:space:]]*", "", hit[1])
-  gsub('^"|"$', "", sub("[[:space:]]*(#.*)?$", "", v))
+# Shared with 07_generate_report.R via R/lib/lib_common.R rather than each
+# stage defining its own copy of this reader.
+lib_common_r <- file.path(suite_dir, "R", "lib", "lib_common.R")
+if (!file.exists(lib_common_r)) {
+  stop("Cannot find ", lib_common_r, call. = FALSE)
 }
+source(lib_common_r)
+cfg_lines <- readLines(config_file, warn = FALSE)
+cfg_get <- cfg_get_factory(cfg_lines)
 min_shared  <- as.numeric(cfg_get("min_shared_cpgs", "5"))
 max_cpg_ratio <- as.numeric(cfg_get("max_cpg_ratio", "3"))
 max_cov_ratio <- as.numeric(cfg_get("max_coverage_ratio", "5"))

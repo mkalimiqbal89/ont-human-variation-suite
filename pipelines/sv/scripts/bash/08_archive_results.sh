@@ -13,8 +13,16 @@
 # Each run appends a new timestamped snapshot rather than overwriting a
 # previous archive for the same sample, so re-running with different
 # thresholds later preserves a full history rather than clobbering it. A
-# running master index (archive_index.tsv) is appended to on every call,
-# giving a single queryable log across every sample ever archived.
+# running master index (archive_index_sv.tsv) is appended to on every call,
+# giving a single queryable log across every sample ever archived by this
+# pipeline.
+#
+# archive_root is commonly shared with other pipelines in the suite (they
+# all default to the same institutional storage location). Destination
+# directories are namespaced <archive_root>/<SAMPLE_ID>/sv/<run>/ and the
+# index file is named archive_index_sv.tsv (not archive_index.tsv) so this
+# pipeline's runs never collide with another pipeline's differently-shaped
+# index rows or run directories under the same shared root.
 #
 # Usage:
 #   bash scripts/bash/08_archive_results.sh [path/to/pipeline_config.yaml]
@@ -24,6 +32,8 @@
 # =============================================================================
 
 set -uo pipefail
+
+PIPELINE_TAG="sv"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -56,8 +66,7 @@ fi
 # anything. Catches ownership/permission mismatches immediately with a
 # clear message, instead of failing halfway through and printing a false
 # "Done" at the end.
-WRITE_TEST="${ARCHIVE_ROOT}/.write_test_$$"
-if ! touch "${WRITE_TEST}" 2>/dev/null; then
+if ! common_check_writable "${ARCHIVE_ROOT}"; then
     echo "[FATAL] No write permission in archive_root: ${ARCHIVE_ROOT}"
     echo "        Running as: $(whoami)"
     echo "        Check ownership/permissions (e.g. 'ls -ld ${ARCHIVE_ROOT}')"
@@ -65,14 +74,16 @@ if ! touch "${WRITE_TEST}" 2>/dev/null; then
     echo "        or chmod -R g+ws ${ARCHIVE_ROOT} if multiple users archive here."
     exit 1
 fi
-rm -f "${WRITE_TEST}"
 
 # --- Build destination path ---------------------------------------------------
-# Grouped by RAW identifier (matches how the raw Epi2ME output for this
-# sample is already organized on internal storage), timestamped so repeat
+# Grouped by SAMPLE_ID (not RAW_SAMPLE_PREFIX -- kept consistent with every
+# other pipeline in the suite, all of which key their archive on the
+# anonymised sample_id), then by pipeline tag, then timestamped so repeat
 # runs (e.g. after threshold changes) accumulate rather than overwrite.
+# RAW_SAMPLE_PREFIX is still recorded in provenance/archive_manifest.txt
+# below, so nothing is lost by not putting it in the path.
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-DEST_DIR="${ARCHIVE_ROOT}/${RAW_SAMPLE_PREFIX}/pipeline_run_${TIMESTAMP}"
+DEST_DIR="${ARCHIVE_ROOT}/${SAMPLE_ID}/${PIPELINE_TAG}/${TIMESTAMP}"
 
 if [[ -d "${OUTPUT_DIR}" ]] && [[ -z "$(find "${OUTPUT_DIR}" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
     echo "[FATAL] ${OUTPUT_DIR} exists but is empty. Run the pipeline (04_run_all.sh) before archiving."
@@ -145,10 +156,26 @@ EOF
 [[ -f "${DEST_DIR}/provenance/archive_manifest.txt" ]] || { echo "[FATAL] Could not write archive_manifest.txt"; exit 1; }
 
 # --- Checksums for integrity verification ------------------------------------
+# SHA-256, generated then immediately verified by reading the archived files
+# back (common_write_checksums, common/lib_common.sh) -- a checksum file that
+# was only ever generated proves nothing about what actually landed on disk.
+# This replaces a previous md5sum-only pass that never verified itself.
 echo "Computing checksums..."
-( cd "${DEST_DIR}" && find results provenance -type f -exec md5sum {} \; > checksums.md5 ) || { echo "[FATAL] Checksum step failed"; exit 1; }
-N_FILES=$(wc -l < "${DEST_DIR}/checksums.md5")
-echo "  ${N_FILES} files checksummed."
+CHECKSUM_STATUS="$(common_write_checksums "${DEST_DIR}" "checksums.sha256" results provenance)"
+case "${CHECKSUM_STATUS}" in
+    verified:*)
+        N_FILES="${CHECKSUM_STATUS#verified:}"
+        echo "  ${N_FILES} files checksummed and verified."
+        ;;
+    unavailable)
+        echo "  [WARN] no sha256sum or shasum available -- checksums skipped."
+        ;;
+    *)
+        echo "[FATAL] Checksum verification failed -- archive is not trustworthy"
+        rm -rf "${DEST_DIR}"
+        exit 1
+        ;;
+esac
 
 # --- Optional compression -----------------------------------------------------
 if [[ "${COMPRESS}" == "true" ]]; then
@@ -161,7 +188,11 @@ else
 fi
 
 # --- Append to master index across all samples ever archived ----------------
-INDEX_FILE="${ARCHIVE_ROOT}/archive_index.tsv"
+# Named archive_index_sv.tsv, not archive_index.tsv: archive_root is shared
+# with other pipelines whose index rows have a completely different column
+# layout, and a shared filename here previously caused SV and methylation
+# rows to land in the same file under whichever header was written first.
+INDEX_FILE="${ARCHIVE_ROOT}/archive_index_sv.tsv"
 if [[ ! -f "${INDEX_FILE}" ]]; then
     echo -e "timestamp\tsample_id\traw_sample_prefix\tgit_commit\tn_deletions\tn_insertions\tn_duplications\tn_inversions\tn_translocations\tn_gene_fusions\tn_gene_disruptions\tarchive_path" > "${INDEX_FILE}" \
         || { echo "[FATAL] Could not create index file: ${INDEX_FILE}"; exit 1; }
@@ -188,5 +219,5 @@ echo -e "${TIMESTAMP}\t${SAMPLE_ID}\t${RAW_SAMPLE_PREFIX}\t${GIT_COMMIT}\t${N_DE
 echo ""
 echo "=== [08_archive_results.sh] Done ==="
 echo "  Archived to : ${FINAL_LOCATION}"
-echo "  Checksums   : ${DEST_DIR}/checksums.md5 (or inside the .tar.gz if compressed)"
+echo "  Checksums   : ${DEST_DIR}/checksums.sha256 (or inside the .tar.gz if compressed)"
 echo "  Master index: ${INDEX_FILE} (now $(($(wc -l < "${INDEX_FILE}") - 1)) sample runs recorded)"

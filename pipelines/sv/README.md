@@ -245,13 +245,17 @@ This is a deliberate, separate step — it is **not** part of
 bash scripts/bash/08_archive_results.sh
 ```
 
-Each run creates a new timestamped directory (past archives for the same
-sample are never overwritten), copies the exact config used and tool
-versions alongside the results for full provenance, generates an MD5
-checksum manifest, and appends a summary row (variant counts per category)
-to a running `archive_index.tsv` at the archive root — giving a single
-queryable log across every sample ever processed, entirely separate from
-what's in this repo.
+Each run creates a new timestamped directory under
+`<archive_root>/<SAMPLE_ID>/sv/<run>/` (past archives for the same sample are
+never overwritten), copies the exact config used and tool versions alongside
+the results for full provenance, generates a SHA-256 checksum manifest
+(verified against the archived files immediately after writing), and appends
+a summary row (variant counts per category) to a running
+`archive_index_sv.tsv` at the archive root — giving a single queryable log
+across every sample this pipeline has ever archived, entirely separate from
+what's in this repo. `archive_root` is commonly shared with other pipelines
+in the suite; the `sv/` tag in the path and the pipeline-specific index
+filename keep this pipeline's runs from colliding with theirs.
 
 If `archive.archive_root` is unset or still the placeholder value,
 archiving is silently skipped rather than failing — it's opt-in.

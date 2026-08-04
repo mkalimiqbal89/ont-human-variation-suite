@@ -204,14 +204,22 @@ Okabe-Ito, which is colour-blind safe and survives greyscale printing.
 
 ```
 <archive_root>/
-├── archive_index.tsv                one row per archived run
-└── <SAMPLE_ID>/<RUN_STAMP>/
+├── archive_index_methylation.tsv    one row per archived run of THIS pipeline
+└── <SAMPLE_ID>/methylation/<RUN_STAMP>/
     ├── results/                     only files named <SAMPLE_ID>.*
     ├── logs/
     ├── config/                      pipeline_config.yaml + reference_paths.yaml
     ├── checksums.sha256             generated AND verified by read-back
     └── provenance.tsv
 ```
+
+`archive_root` is commonly shared with other pipelines in the suite (they all
+default to the same institutional storage location). The `methylation/` tag
+in the path and the pipeline-specific index filename
+(`archive_index_methylation.tsv`, not `archive_index.tsv`) keep this
+pipeline's runs from colliding with another pipeline's differently-shaped
+index rows or run directories under that shared root — the SV pipeline
+writes its own `archive_index_sv.tsv` alongside this one.
 
 Runs are stamped, so re-analysis never overwrites history. Every guard in this
 stage exists because the equivalent SV stage got it wrong first:

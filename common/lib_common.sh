@@ -104,39 +104,72 @@ common_resolve_filename() {
 }
 
 # -----------------------------------------------------------------------------
+# common_probe_tool <tool>
+# Runs `<tool> --version` and reports whether it is usable, not just present.
+# Echoes one line to stdout, one of:
+#   OK <version-line>
+#   FAIL <version-line>    (found on PATH but broken, e.g. missing shared lib)
+#   MISS                   (not found on PATH at all)
+# Returns 0 for OK, 1 for FAIL/MISS.
+#
+# PRESENCE IS NOT ENOUGH. A binary can sit on PATH and still be unusable
+# through a broken shared library, so the tool is RUN and both its exit status
+# and its output are inspected. The SV pipeline once reported [OK] for a
+# bcftools that could not load.
+#
+# This is the single place that logic lives. common_check_tools below and
+# scripts/check_dependencies.sh's check_tool() both build on it rather than
+# each re-implementing the broken-shared-library detection — that duplication
+# is exactly how the SV/methylation copies diverged before common/ existed.
+# -----------------------------------------------------------------------------
+common_probe_tool() {
+    local tool="$1" ver rc
+    if ! command -v "${tool}" >/dev/null 2>&1; then
+        echo "MISS"
+        return 1
+    fi
+    ver=$("${tool}" --version 2>&1 | head -n1)
+    rc=$?
+    case "${ver}" in
+        *"cannot open shared object"*|*"error while loading shared libraries"*|*"command not found"*)
+            rc=1 ;;
+    esac
+    if [ "${rc}" -ne 0 ]; then
+        echo "FAIL ${ver}"
+        return 1
+    fi
+    echo "OK ${ver}"
+    return 0
+}
+
+# -----------------------------------------------------------------------------
 # common_check_tools <tool_version_log> <tool> [tool...]
 # Reports each tool and records its version. Returns 1 if any is missing or
 # present-but-broken; the caller decides what to do about it.
-#
-# PRESENCE IS NOT ENOUGH. A binary can sit on PATH and still be unusable
-# through a broken shared library, so each tool is RUN and both its exit status
-# and its output are inspected. The SV pipeline once reported [OK] for a
-# bcftools that could not load.
 # -----------------------------------------------------------------------------
 common_check_tools() {
     local log="$1"; shift
-    local tool ver rc missing=""
+    local tool result status ver missing=""
 
     : > "${log}"
     for tool in "$@"; do
-        if command -v "${tool}" >/dev/null 2>&1; then
-            ver=$("${tool}" --version 2>&1 | head -n1)
-            rc=$?
-            case "${ver}" in
-                *"cannot open shared object"*|*"error while loading shared libraries"*|*"command not found"*)
-                    rc=1 ;;
-            esac
-            if [ "${rc}" -ne 0 ]; then
-                echo "  [FAIL] ${tool} found on PATH but failed to run: ${ver}"
-                missing="${missing} ${tool}"
-            else
+        result="$(common_probe_tool "${tool}")"
+        status="${result%% *}"
+        ver="${result#* }"
+        case "${status}" in
+            OK)
                 echo "  [OK]   ${tool} -> ${ver}"
                 echo "${tool}: ${ver}" >> "${log}"
-            fi
-        else
-            echo "  [MISS] ${tool} not found on PATH"
-            missing="${missing} ${tool}"
-        fi
+                ;;
+            FAIL)
+                echo "  [FAIL] ${tool} found on PATH but failed to run: ${ver}"
+                missing="${missing} ${tool}"
+                ;;
+            MISS)
+                echo "  [MISS] ${tool} not found on PATH"
+                missing="${missing} ${tool}"
+                ;;
+        esac
     done
 
     if [ -n "${missing}" ]; then
@@ -149,6 +182,88 @@ common_check_tools() {
         return 1
     fi
     return 0
+}
+
+# -----------------------------------------------------------------------------
+# common_check_writable <dir>
+# Verifies dir is actually writable by writing and removing a probe file --
+# `-w` reports incorrectly on some network/FUSE mounts. Prints [OK]/[FAIL] to
+# stdout/stderr and returns 0/1; the caller decides what to do about it.
+#
+# Both pipelines' 08_archive_results.sh independently wrote this same
+# write-a-probe-file check before common/ existed.
+# -----------------------------------------------------------------------------
+common_check_writable() {
+    local dir="$1" probe
+    probe="${dir}/.write_probe_$$"
+    if : > "${probe}" 2>/dev/null; then
+        rm -f "${probe}"
+        echo "  [OK]   ${dir} is writable"
+        return 0
+    fi
+    echo "  [FAIL] ${dir} is not writable" >&2
+    return 1
+}
+
+# -----------------------------------------------------------------------------
+# common_check_free_space <dir> <needed_kb>
+# Warns rather than fails if free space cannot be determined (e.g. df flags
+# differ on an unusual filesystem) -- an archive should not be blocked by an
+# inability to check disk space, only by actually running out of it.
+# -----------------------------------------------------------------------------
+common_check_free_space() {
+    local dir="$1" needed_kb="$2" avail_kb
+    avail_kb=$(df -Pk "${dir}" 2>/dev/null | awk 'NR==2 {print $4}')
+    if [[ -z "${avail_kb}" ]]; then
+        echo "  [WARN] could not determine free space on ${dir}"
+        return 0
+    fi
+    if [[ "${avail_kb}" -lt "${needed_kb}" ]]; then
+        echo "  [FAIL] insufficient space: need ~$((needed_kb / 1024)) MB, have $((avail_kb / 1024)) MB" >&2
+        return 1
+    fi
+    echo "  [OK]   space: need ~$((needed_kb / 1024)) MB, have $((avail_kb / 1024)) MB"
+    return 0
+}
+
+# -----------------------------------------------------------------------------
+# common_write_checksums <dest_dir> <checksum_filename> <relative_path> [relative_path...]
+# Writes a checksum manifest (recursively, over the given relative paths under
+# dest_dir) and immediately verifies it by reading the files back -- a
+# checksum file that was only ever generated, never re-read, proves nothing
+# about what actually landed on disk.
+#
+# Prefers sha256sum, falls back to `shasum -a 256`. Echoes one line to stdout:
+#   verified:<N>   all N checksums verified
+#   failed         generated but did not verify (caller should delete the archive)
+#   unavailable    neither sha256sum nor shasum is on PATH
+# Returns 0 only for "verified:<N>".
+# -----------------------------------------------------------------------------
+common_write_checksums() {
+    local dest_dir="$1" checksum_name="$2"; shift 2
+    local sum_cmd sum_check n
+
+    if command -v sha256sum >/dev/null 2>&1; then
+        sum_cmd=(sha256sum); sum_check=(sha256sum -c --quiet)
+    elif command -v shasum >/dev/null 2>&1; then
+        sum_cmd=(shasum -a 256); sum_check=(shasum -a 256 -c --status)
+    else
+        echo "unavailable"
+        return 1
+    fi
+
+    if ! ( cd "${dest_dir}" && find "$@" -type f -print0 | xargs -0 "${sum_cmd[@]}" > "${checksum_name}" ); then
+        echo "unavailable"
+        return 1
+    fi
+    n=$(wc -l < "${dest_dir}/${checksum_name}" | tr -d ' ')
+
+    if ( cd "${dest_dir}" && "${sum_check[@]}" "${checksum_name}" ) 2>/dev/null; then
+        echo "verified:${n}"
+        return 0
+    fi
+    echo "failed"
+    return 1
 }
 
 # -----------------------------------------------------------------------------

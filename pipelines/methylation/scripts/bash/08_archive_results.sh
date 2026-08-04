@@ -2,8 +2,15 @@
 # =============================================================================
 # 08_archive_results.sh
 # Archives one sample's analysis to the longitudinal store:
-#     <archive_root>/<SAMPLE_ID>/<RUN_STAMP>/
-# with checksums, provenance, and an entry appended to archive_index.tsv.
+#     <archive_root>/<SAMPLE_ID>/methylation/<RUN_STAMP>/
+# with checksums, provenance, and an entry appended to
+# archive_index_methylation.tsv.
+#
+# archive_root is commonly shared with other pipelines in the suite (they
+# all default to the same institutional storage location). The pipeline tag
+# in the path and the pipeline-specific index filename keep this pipeline's
+# runs from colliding with another pipeline's differently-shaped index rows
+# or run directories under that shared root.
 #
 # EVERY GUARD BELOW EXISTS BECAUSE THE EQUIVALENT SV STAGE GOT IT WRONG FIRST:
 #
@@ -27,6 +34,8 @@
 # =============================================================================
 
 set -uo pipefail
+
+PIPELINE_TAG="methylation"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -61,9 +70,9 @@ if [[ -z "${ARCHIVE_ROOT}" || "${ARCHIVE_ROOT}" == "/path/to/internal/archive/ro
     exit 0
 fi
 
-DEST_SAMPLE="${ARCHIVE_ROOT}/${SAMPLE_ID}"
+DEST_SAMPLE="${ARCHIVE_ROOT}/${SAMPLE_ID}/${PIPELINE_TAG}"
 DEST="${DEST_SAMPLE}/${RUN_STAMP}"
-INDEX="${ARCHIVE_ROOT}/archive_index.tsv"
+INDEX="${ARCHIVE_ROOT}/archive_index_${PIPELINE_TAG}.tsv"
 
 echo "Archive root : ${ARCHIVE_ROOT}"
 echo "Destination  : ${DEST}"
@@ -135,28 +144,12 @@ fi
 
 # Writability, tested by actually writing. `-w` lies on some network mounts.
 if [[ ${DRY_RUN} -eq 0 ]]; then
-    PROBE="${ARCHIVE_ROOT}/.write_probe_$$"
-    if : > "${PROBE}" 2>/dev/null; then
-        rm -f "${PROBE}"
-        echo "  [OK]   archive root is writable"
-    else
-        echo "  [FAIL] archive root is not writable: ${ARCHIVE_ROOT}" >&2
-        exit 1
-    fi
+    common_check_writable "${ARCHIVE_ROOT}" || exit 1
 fi
 
 # Free space, with a 20% margin.
-AVAIL_KB=$(df -Pk "${ARCHIVE_ROOT}" 2>/dev/null | awk 'NR==2 {print $4}')
 NEED_KB=$(( TOTAL_KB * 12 / 10 ))
-if [[ -n "${AVAIL_KB}" ]]; then
-    if [[ "${AVAIL_KB}" -lt "${NEED_KB}" ]]; then
-        echo "  [FAIL] insufficient space: need ~$((NEED_KB / 1024)) MB, have $((AVAIL_KB / 1024)) MB" >&2
-        exit 1
-    fi
-    echo "  [OK]   space: need ~$((NEED_KB / 1024)) MB, have $((AVAIL_KB / 1024)) MB"
-else
-    echo "  [WARN] could not determine free space on ${ARCHIVE_ROOT}"
-fi
+common_check_free_space "${ARCHIVE_ROOT}" "${NEED_KB}" || exit 1
 
 # Refuse to overwrite an existing run directory.
 if [[ -e "${DEST}" ]]; then
@@ -224,37 +217,26 @@ fi
 echo "  [OK]   all ${COPIED} archived result files belong to ${SAMPLE_ID}"
 
 # --- Checksums, then verify by reading back ---------------------------------
+# common_write_checksums (common/lib_common.sh): generates then immediately
+# re-reads the checksum file to confirm it matches what was actually archived.
 echo ""
 echo "--- Checksums ---"
-if command -v sha256sum >/dev/null 2>&1; then
-    SUM_CMD=(sha256sum); SUM_CHECK=(sha256sum -c --quiet)
-elif command -v shasum >/dev/null 2>&1; then
-    SUM_CMD=(shasum -a 256); SUM_CHECK=(shasum -a 256 -c --status)
-else
-    SUM_CMD=(); SUM_CHECK=()
-fi
-
 CHECKSUM_FILE="${DEST}/checksums.sha256"
-if [[ ${#SUM_CMD[@]} -eq 0 ]]; then
-    echo "  [WARN] no sha256sum or shasum available — checksums skipped"
-    CHECKSUM_STATUS="unavailable"
-else
-    ( cd "${DEST}" && find results config -type f -print0 \
-        | xargs -0 "${SUM_CMD[@]}" > "checksums.sha256" ) || {
-        echo "[FATAL] checksum generation failed" >&2; exit 1; }
-    N_SUMS=$(wc -l < "${CHECKSUM_FILE}" | tr -d ' ')
-    echo "  [OK]   ${N_SUMS} checksums written"
-
-    # Generating a checksum file proves nothing on its own. Verify it.
-    if ( cd "${DEST}" && "${SUM_CHECK[@]}" checksums.sha256 ) 2>/dev/null; then
-        echo "  [OK]   all ${N_SUMS} checksums verified against the archived files"
-        CHECKSUM_STATUS="verified:${N_SUMS}"
-    else
+CHECKSUM_STATUS="$(common_write_checksums "${DEST}" "checksums.sha256" results config)"
+case "${CHECKSUM_STATUS}" in
+    verified:*)
+        N_SUMS="${CHECKSUM_STATUS#verified:}"
+        echo "  [OK]   ${N_SUMS} checksums written and verified against the archived files"
+        ;;
+    unavailable)
+        echo "  [WARN] no sha256sum or shasum available — checksums skipped"
+        ;;
+    *)
         echo "  [FAIL] checksum verification failed — archive is not trustworthy" >&2
         rm -rf "${DEST}"
         exit 1
-    fi
-fi
+        ;;
+esac
 
 # --- Provenance --------------------------------------------------------------
 PROV="${DEST}/provenance.tsv"

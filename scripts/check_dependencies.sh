@@ -31,6 +31,14 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# shellcheck source=../common/lib_common.sh
+LIB_COMMON="${REPO_DIR}/common/lib_common.sh"
+if [[ ! -f "${LIB_COMMON}" ]]; then
+    echo "[FATAL] Cannot find ${LIB_COMMON}" >&2
+    exit 1
+fi
+source "${LIB_COMMON}"
+
 DO_INSTALL=0
 ONLY_PIPELINE=""
 SHOW_CONDA=0
@@ -105,29 +113,35 @@ BROKEN=""
 
 check_tool() {
     local tool="$1" required="${2:-required}"
-    if ! command -v "${tool}" >/dev/null 2>&1; then
-        printf '  [MISS] %-10s not found on PATH\n' "${tool}"
-        if [[ "${required}" == "required" ]]; then
-            case " ${MISSING_REQUIRED} " in *" ${tool} "*) ;; *) MISSING_REQUIRED="${MISSING_REQUIRED} ${tool}" ;; esac
-        else
-            case " ${MISSING_OPTIONAL} " in *" ${tool} "*) ;; *) MISSING_OPTIONAL="${MISSING_OPTIONAL} ${tool}" ;; esac
-        fi
-        return 1
-    fi
+    local result status ver
 
-    # Run it. Presence on PATH does not mean it works.
-    local ver rc
-    ver="$("${tool}" --version 2>&1 | head -n1)"
-    rc=$?
-    if [[ ${rc} -ne 0 \
-          || "${ver}" == *"cannot open shared object"* \
-          || "${ver}" == *"error while loading shared libraries"* ]]; then
-        printf '  [FAIL] %-10s on PATH but will not run: %s\n' "${tool}" "${ver}"
-        case " ${BROKEN} " in *" ${tool} "*) ;; *) BROKEN="${BROKEN} ${tool}" ;; esac
-        return 1
-    fi
-    printf '  [OK]   %-10s %s\n' "${tool}" "${ver}"
-    return 0
+    # The actual "run it and check for a broken shared library" logic lives in
+    # common_probe_tool (common/lib_common.sh) — this function only adds the
+    # required-vs-optional bookkeeping check_dependencies.sh itself needs.
+    result="$(common_probe_tool "${tool}")"
+    status="${result%% *}"
+    ver="${result#* }"
+
+    case "${status}" in
+        MISS)
+            printf '  [MISS] %-10s not found on PATH\n' "${tool}"
+            if [[ "${required}" == "required" ]]; then
+                case " ${MISSING_REQUIRED} " in *" ${tool} "*) ;; *) MISSING_REQUIRED="${MISSING_REQUIRED} ${tool}" ;; esac
+            else
+                case " ${MISSING_OPTIONAL} " in *" ${tool} "*) ;; *) MISSING_OPTIONAL="${MISSING_OPTIONAL} ${tool}" ;; esac
+            fi
+            return 1
+            ;;
+        FAIL)
+            printf '  [FAIL] %-10s on PATH but will not run: %s\n' "${tool}" "${ver}"
+            case " ${BROKEN} " in *" ${tool} "*) ;; *) BROKEN="${BROKEN} ${tool}" ;; esac
+            return 1
+            ;;
+        *)
+            printf '  [OK]   %-10s %s\n' "${tool}" "${ver}"
+            return 0
+            ;;
+    esac
 }
 
 MISSING_R_PACKAGES=""
