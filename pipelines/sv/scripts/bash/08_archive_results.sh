@@ -56,8 +56,7 @@ fi
 # anything. Catches ownership/permission mismatches immediately with a
 # clear message, instead of failing halfway through and printing a false
 # "Done" at the end.
-WRITE_TEST="${ARCHIVE_ROOT}/.write_test_$$"
-if ! touch "${WRITE_TEST}" 2>/dev/null; then
+if ! common_check_writable "${ARCHIVE_ROOT}"; then
     echo "[FATAL] No write permission in archive_root: ${ARCHIVE_ROOT}"
     echo "        Running as: $(whoami)"
     echo "        Check ownership/permissions (e.g. 'ls -ld ${ARCHIVE_ROOT}')"
@@ -65,7 +64,6 @@ if ! touch "${WRITE_TEST}" 2>/dev/null; then
     echo "        or chmod -R g+ws ${ARCHIVE_ROOT} if multiple users archive here."
     exit 1
 fi
-rm -f "${WRITE_TEST}"
 
 # --- Build destination path ---------------------------------------------------
 # Grouped by RAW identifier (matches how the raw Epi2ME output for this
@@ -145,10 +143,26 @@ EOF
 [[ -f "${DEST_DIR}/provenance/archive_manifest.txt" ]] || { echo "[FATAL] Could not write archive_manifest.txt"; exit 1; }
 
 # --- Checksums for integrity verification ------------------------------------
+# SHA-256, generated then immediately verified by reading the archived files
+# back (common_write_checksums, common/lib_common.sh) -- a checksum file that
+# was only ever generated proves nothing about what actually landed on disk.
+# This replaces a previous md5sum-only pass that never verified itself.
 echo "Computing checksums..."
-( cd "${DEST_DIR}" && find results provenance -type f -exec md5sum {} \; > checksums.md5 ) || { echo "[FATAL] Checksum step failed"; exit 1; }
-N_FILES=$(wc -l < "${DEST_DIR}/checksums.md5")
-echo "  ${N_FILES} files checksummed."
+CHECKSUM_STATUS="$(common_write_checksums "${DEST_DIR}" "checksums.sha256" results provenance)"
+case "${CHECKSUM_STATUS}" in
+    verified:*)
+        N_FILES="${CHECKSUM_STATUS#verified:}"
+        echo "  ${N_FILES} files checksummed and verified."
+        ;;
+    unavailable)
+        echo "  [WARN] no sha256sum or shasum available -- checksums skipped."
+        ;;
+    *)
+        echo "[FATAL] Checksum verification failed -- archive is not trustworthy"
+        rm -rf "${DEST_DIR}"
+        exit 1
+        ;;
+esac
 
 # --- Optional compression -----------------------------------------------------
 if [[ "${COMPRESS}" == "true" ]]; then
@@ -188,5 +202,5 @@ echo -e "${TIMESTAMP}\t${SAMPLE_ID}\t${RAW_SAMPLE_PREFIX}\t${GIT_COMMIT}\t${N_DE
 echo ""
 echo "=== [08_archive_results.sh] Done ==="
 echo "  Archived to : ${FINAL_LOCATION}"
-echo "  Checksums   : ${DEST_DIR}/checksums.md5 (or inside the .tar.gz if compressed)"
+echo "  Checksums   : ${DEST_DIR}/checksums.sha256 (or inside the .tar.gz if compressed)"
 echo "  Master index: ${INDEX_FILE} (now $(($(wc -l < "${INDEX_FILE}") - 1)) sample runs recorded)"
