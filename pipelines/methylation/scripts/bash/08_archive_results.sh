@@ -2,8 +2,15 @@
 # =============================================================================
 # 08_archive_results.sh
 # Archives one sample's analysis to the longitudinal store:
-#     <archive_root>/<SAMPLE_ID>/<RUN_STAMP>/
-# with checksums, provenance, and an entry appended to archive_index.tsv.
+#     <archive_root>/<SAMPLE_ID>/methylation/<RUN_STAMP>/
+# with checksums, provenance, and an entry appended to
+# archive_index_methylation.tsv.
+#
+# archive_root is commonly shared with other pipelines in the suite (they
+# all default to the same institutional storage location). The pipeline tag
+# in the path and the pipeline-specific index filename keep this pipeline's
+# runs from colliding with another pipeline's differently-shaped index rows
+# or run directories under that shared root.
 #
 # EVERY GUARD BELOW EXISTS BECAUSE THE EQUIVALENT SV STAGE GOT IT WRONG FIRST:
 #
@@ -27,6 +34,8 @@
 # =============================================================================
 
 set -uo pipefail
+
+PIPELINE_TAG="methylation"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -61,9 +70,9 @@ if [[ -z "${ARCHIVE_ROOT}" || "${ARCHIVE_ROOT}" == "/path/to/internal/archive/ro
     exit 0
 fi
 
-DEST_SAMPLE="${ARCHIVE_ROOT}/${SAMPLE_ID}"
+DEST_SAMPLE="${ARCHIVE_ROOT}/${SAMPLE_ID}/${PIPELINE_TAG}"
 DEST="${DEST_SAMPLE}/${RUN_STAMP}"
-INDEX="${ARCHIVE_ROOT}/archive_index.tsv"
+INDEX="${ARCHIVE_ROOT}/archive_index_${PIPELINE_TAG}.tsv"
 
 echo "Archive root : ${ARCHIVE_ROOT}"
 echo "Destination  : ${DEST}"
