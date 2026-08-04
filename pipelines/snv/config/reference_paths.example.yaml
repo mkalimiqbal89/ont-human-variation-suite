@@ -1,0 +1,21 @@
+# =============================================================================
+# reference_paths.example.yaml (pipelines/snv)
+# Template config — copy to reference_paths.yaml and fill in real paths.
+# The real file is gitignored (machine-specific absolute paths); this
+# template is not.
+#
+# SCAFFOLD ONLY — only the generic genome reference is listed. Add whatever
+# ClinVar/annotation references this pipeline ends up needing when real
+# stages are written.
+# =============================================================================
+
+genome:
+  fasta: "/path/to/reference/GRCh38_no_alt_analysis_set.fna"
+  fasta_index: "/path/to/reference/GRCh38_no_alt_analysis_set.fna.fai"
+  build: "GRCh38"
+
+tools:
+  bcftools: "bcftools"
+  bedtools: "bedtools"
+  tabix: "tabix"
+  R: "Rscript"

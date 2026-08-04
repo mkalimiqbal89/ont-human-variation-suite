@@ -1,0 +1,43 @@
+# =============================================================================
+# pipeline_config.example.yaml (pipelines/snv)
+# Template config — copy to pipeline_config.yaml and fill in real values.
+# The real file is gitignored; this template is not.
+#
+# SCAFFOLD ONLY. This covers just the fields every pipeline in the suite
+# shares (read by scripts/bash/00_setup_env.sh). It has no SNV-specific
+# filtering/annotation section yet because no stage that would consume one
+# exists. Add one here, following pipelines/sv/config/pipeline_config.yaml's
+# `filtering:`/`sv_categories:` blocks or
+# pipelines/methylation/config/pipeline_config.yaml's `filtering:`/
+# `annotation:` blocks as a model, when real stages are written.
+# =============================================================================
+
+sample:
+  sample_id: "SAMPLE_01"
+  raw_sample_prefix: "/path/to/raw/sample/prefix"
+  run_description: ""
+
+paths:
+  input_dir: "/path/to/epi2me/output"
+  output_dir: "/path/to/pipelines/snv/results"
+  work_dir: "/path/to/pipelines/snv/work"
+  repo_dir: "/path/to/pipelines/snv"
+
+reference:
+  config_file: "config/reference_paths.yaml"
+
+input_files:
+  # Filenames as produced by wf-human-variation (relative to paths.input_dir).
+  snv_vcf: "${sample.raw_sample_prefix}.wf_snp.vcf.gz"
+  snv_vcf_clinvar: "${sample.raw_sample_prefix}.wf_snp_clinvar.vcf.gz"  # optional
+
+compute:
+  threads: 8
+
+logging:
+  log_dir: "logs"
+  log_level: "INFO"
+
+archive:
+  archive_root: "/path/to/internal/archive/root"
+  compress: false
