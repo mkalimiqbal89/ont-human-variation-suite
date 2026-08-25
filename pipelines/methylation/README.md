@@ -408,5 +408,5 @@ Kept consistent with the SV pipeline:
 
 | Pipeline ID | Epi2ME prefix |
 |---|---|
-| `SAMPLE_01` | `HLH_S0002_BL_EPI2ME_2.7.2` |
-| `SAMPLE_02` | `HLH_S0001_BL_EPI2ME_2.7.2` |
+| `SAMPLE_01` | `HLH_S0001_BL_EPI2ME_2.7.2` |
+| `SAMPLE_02` | `HLH_S0002_BL_EPI2ME_2.7.2` |
