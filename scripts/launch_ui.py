@@ -4,8 +4,8 @@
 launch_ui.py (ONT Human Variation Suite)
 Standalone, zero-dependency Python 3 Web UI server for configuring global sample
 paths, reference paths, and parameters, validating directories with 'ls -l'
-sneak-peek, native OS file/folder browsing, and running single or multi-pipeline
-suites directly from the browser.
+sneak-peek, native OS file/folder browsing, auto-detecting Epi2ME callsets,
+and running single or multi-pipeline suites directly from the browser.
 
 Usage:
   python3 scripts/launch_ui.py
@@ -17,6 +17,7 @@ import os
 import sys
 import json
 import glob
+import re
 import traceback
 import argparse
 import webbrowser
@@ -29,6 +30,48 @@ REPO_DIR = os.path.dirname(SCRIPT_DIR)
 HTML_FILE = os.path.join(SCRIPT_DIR, "ui_index.html")
 
 PIPELINES = ["sv", "methylation", "cnv", "snv"]
+
+def sanitize_prefix(prefix):
+    """Clean raw sample prefix by removing trailing pipeline extensions if pasted accidentally."""
+    if not prefix:
+        return ""
+    prefix = prefix.strip()
+    # Strip common file suffixes if user pasted a full filename
+    for ext in [".wf_sv.vcf.gz", ".wf_mods.bedmethyl.gz", ".wf_cnv.vcf.gz", ".wf_snp.vcf.gz", ".wf_snp_clinvar.vcf.gz", ".wf_", ".vcf.gz", ".vcf", ".gz"]:
+        if prefix.endswith(ext):
+            prefix = prefix[:-len(ext)]
+    return prefix.rstrip("._")
+
+def auto_detect_prefix(input_dir):
+    """Scan input_dir for Epi2ME files and extract the true raw sample prefix."""
+    if not input_dir or not os.path.exists(input_dir):
+        return ""
+    
+    # Search for *.wf_*.vcf.gz or *.bedmethyl.gz
+    patterns = [
+        "*.wf_sv.vcf.gz",
+        "*.wf_mods.bedmethyl.gz",
+        "*.wf_cnv.vcf.gz",
+        "*.wf_snp.vcf.gz"
+    ]
+    for pat in patterns:
+        matches = glob.glob(os.path.join(input_dir, pat))
+        if matches:
+            basename = os.path.basename(matches[0])
+            return sanitize_prefix(basename)
+    return ""
+
+def clean_base_path(path_str, sample_id):
+    """Strip compounding subfolders like /<sample_id>/<pipe> from base output/work dir."""
+    if not path_str:
+        return ""
+    cleaned = path_str.strip().rstrip("/")
+    for p in PIPELINES + ["results", "work"]:
+        pattern = rf"(/{re.escape(sample_id)})?(/{p})+$"
+        cleaned = re.sub(pattern, "", cleaned)
+        if cleaned.endswith(f"/{sample_id}"):
+            cleaned = cleaned[:-len(sample_id)-1]
+    return cleaned.rstrip("/")
 
 class ReusableHTTPServer(HTTPServer):
     allow_reuse_address = True
@@ -152,14 +195,29 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
 
             elif parsed.path == "/api/save-config":
                 selected_pipelines = payload.get("pipelines", ["sv"])
-                sample_id = payload.get("sample_id", "SAMPLE_01")
-                raw_prefix = payload.get("raw_sample_prefix", "sample_01")
-                run_name = payload.get("run_name", "Epi2ME Downstream Analysis")
-                input_dir = payload.get("input_dir", "")
-                base_output_dir = payload.get("output_dir", "")
-                base_work_dir = payload.get("work_dir", "")
-                gene_bed = payload.get("gene_bed", "")
-                archive_root = payload.get("archive_root", "")
+                sample_id = payload.get("sample_id", "SAMPLE_01").strip()
+                raw_prefix = payload.get("raw_sample_prefix", "").strip()
+                run_name = payload.get("run_name", "Epi2ME Downstream Analysis").strip()
+                input_dir = payload.get("input_dir", "").strip().rstrip("/")
+                raw_out_dir = payload.get("output_dir", "").strip()
+                raw_wrk_dir = payload.get("work_dir", "").strip()
+                gene_bed = payload.get("gene_bed", "").strip()
+                archive_root = payload.get("archive_root", "").strip().rstrip("/")
+
+                # Prevent path compounding
+                base_output_dir = clean_base_path(raw_out_dir, sample_id)
+                base_work_dir = clean_base_path(raw_wrk_dir, sample_id)
+
+                # Auto-detect true raw sample prefix from input_dir if possible
+                detected_prefix = auto_detect_prefix(input_dir) if input_dir else ""
+                if detected_prefix:
+                    raw_prefix = detected_prefix
+                else:
+                    raw_prefix = sanitize_prefix(raw_prefix) or sample_id
+
+                # Resolve absolute gene_bed path if provided
+                if gene_bed and os.path.exists(gene_bed):
+                    gene_bed = os.path.abspath(gene_bed)
 
                 min_qual = payload.get("min_qual", "20")
                 min_vaf = payload.get("min_vaf", "0.15")
@@ -177,12 +235,13 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
                     cfg_path = os.path.join(cfg_dir, "pipeline_config.yaml")
                     ref_path = os.path.join(cfg_dir, "reference_paths.yaml")
 
-                    if len(selected_pipelines) > 1 and base_output_dir:
+                    # Output directory clean hierarchy: <base_output_dir>/<sample_id>/<pipe>
+                    if base_output_dir:
                         out_dir = os.path.join(base_output_dir, sample_id, pipe)
                         wrk_dir = os.path.join(base_work_dir, sample_id, pipe) if base_work_dir else os.path.join(pipe_dir, "work")
                     else:
-                        out_dir = base_output_dir if base_output_dir else os.path.join(pipe_dir, "results")
-                        wrk_dir = base_work_dir if base_work_dir else os.path.join(pipe_dir, "work")
+                        out_dir = os.path.join(pipe_dir, "results")
+                        wrk_dir = os.path.join(pipe_dir, "work")
 
                     with open(cfg_path, "w", encoding="utf-8") as f:
                         f.write(f"# Pipeline Config for {pipe.upper()}\n")
@@ -225,12 +284,22 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
 
                     saved_files.append(pipe)
 
-                self._send_json({"ok": True, "saved_pipelines": saved_files})
+                self._send_json({
+                    "ok": True,
+                    "saved_pipelines": saved_files,
+                    "sanitized_raw_prefix": raw_prefix,
+                    "clean_output_dir": base_output_dir,
+                    "clean_work_dir": base_work_dir
+                })
 
             elif parsed.path == "/api/peek-path":
-                input_dir = payload.get("input_dir", "")
-                gene_bed = payload.get("gene_bed", "")
-                output_dir = payload.get("output_dir", "")
+                input_dir = payload.get("input_dir", "").strip().rstrip("/")
+                gene_bed = payload.get("gene_bed", "").strip()
+                output_dir = payload.get("output_dir", "").strip().rstrip("/")
+                raw_prefix = payload.get("raw_sample_prefix", "").strip()
+
+                detected_prefix = auto_detect_prefix(input_dir) if input_dir else ""
+                clean_prefix = detected_prefix or sanitize_prefix(raw_prefix)
 
                 results = {}
                 if input_dir and os.path.exists(input_dir):
@@ -243,7 +312,9 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
                         results["input_dir"] = {
                             "exists": True,
                             "ls_output": dir_contents[:2000],
-                            "matching_files": matching_names
+                            "matching_files": matching_names,
+                            "detected_prefix": detected_prefix,
+                            "sanitized_prefix": clean_prefix
                         }
                     except Exception as e:
                         results["input_dir"] = {"exists": True, "error": str(e)}
