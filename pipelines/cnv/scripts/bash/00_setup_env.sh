@@ -62,6 +62,7 @@ common_guard_duplicate_keys "${CONFIG_FILE}" \
     sample_id raw_sample_prefix \
     input_dir output_dir work_dir repo_dir \
     config_file cnv_vcf \
+    min_cnv_length min_qual pass_only max_cn_loss min_cn_gain \
     threads log_dir archive_root \
     || { return 1 2>/dev/null || exit 1; }
 
@@ -72,12 +73,17 @@ INPUT_DIR="$(common_yaml_get "${CONFIG_FILE}" 'input_dir')"
 OUTPUT_DIR="$(common_yaml_get "${CONFIG_FILE}" 'output_dir')"
 WORK_DIR="$(common_yaml_get "${CONFIG_FILE}" 'work_dir')"
 REPO_DIR_CFG="$(common_yaml_get "${CONFIG_FILE}" 'repo_dir')"
+MIN_CNV_LENGTH="$(common_yaml_get "${CONFIG_FILE}" 'min_cnv_length' || echo "10000")"
+MIN_QUAL="$(common_yaml_get "${CONFIG_FILE}" 'min_qual' || echo "20")"
+PASS_ONLY="$(common_yaml_get "${CONFIG_FILE}" 'pass_only' || echo "true")"
+MAX_CN_LOSS="$(common_yaml_get "${CONFIG_FILE}" 'max_cn_loss' || echo "1")"
+MIN_CN_GAIN="$(common_yaml_get "${CONFIG_FILE}" 'min_cn_gain' || echo "3")"
 THREADS="$(common_yaml_get "${CONFIG_FILE}" 'threads')"
 ARCHIVE_ROOT="$(common_yaml_get "${CONFIG_FILE}" 'archive_root')"
 LOG_DIR="$(common_resolve_dir "$(common_yaml_get "${CONFIG_FILE}" 'log_dir')" "${REPO_DIR}")"
 
 export SAMPLE_ID RAW_SAMPLE_PREFIX INPUT_DIR OUTPUT_DIR WORK_DIR REPO_DIR_CFG
-export THREADS ARCHIVE_ROOT LOG_DIR
+export MIN_CNV_LENGTH MIN_QUAL PASS_ONLY MAX_CN_LOSS MIN_CN_GAIN THREADS ARCHIVE_ROOT LOG_DIR
 
 CNV_VCF_NAME="$(common_resolve_filename "${CONFIG_FILE}" 'cnv_vcf' "${RAW_SAMPLE_PREFIX}")"
 export CNV_VCF_NAME
@@ -88,15 +94,13 @@ echo "Output dir    : ${OUTPUT_DIR}"
 echo "Work dir      : ${WORK_DIR}"
 
 # --- Tools -------------------------------------------------------------------
-# Baseline VCF-handling tools only. Add whatever this pipeline's real stages
-# turn out to need (a CNV caller's own tooling, plotting dependencies, etc.).
 echo ""
 echo "=== Tool check ==="
 mkdir -p "${LOG_DIR}"
 TOOL_VERSION_LOG="${LOG_DIR}/tool_versions.txt"
 export TOOL_VERSION_LOG
 
-common_check_tools "${TOOL_VERSION_LOG}" bcftools tabix \
+common_check_tools "${TOOL_VERSION_LOG}" bcftools bedtools tabix Rscript \
     || { return 1 2>/dev/null || exit 1; }
 
 echo ""
@@ -104,6 +108,11 @@ echo "Tool versions recorded to: ${TOOL_VERSION_LOG}"
 
 # --- Working directories -----------------------------------------------------
 mkdir -p "${OUTPUT_DIR}" "${WORK_DIR}" "${LOG_DIR}"
+mkdir -p "${OUTPUT_DIR}/deletions" \
+         "${OUTPUT_DIR}/duplications" \
+         "${OUTPUT_DIR}/gene_cnvs" \
+         "${OUTPUT_DIR}/qc_summary"
 
 echo ""
-echo "=== [00_setup_env.sh] Environment ready. (scaffold pipeline — no stage 01+ yet) ==="
+echo "=== [00_setup_env.sh] Environment ready. ==="
+

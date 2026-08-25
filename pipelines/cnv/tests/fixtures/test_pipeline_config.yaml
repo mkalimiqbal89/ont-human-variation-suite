@@ -1,0 +1,38 @@
+sample:
+  sample_id: "TEST_SAMPLE"
+  raw_sample_prefix: "test_sample"
+  run_description: "Synthetic test fixture for CNV pipeline"
+
+paths:
+  input_dir: "."
+  output_dir: "./results"
+  work_dir: "./work"
+  repo_dir: "."
+
+reference:
+  config_file: "test_reference_paths.yaml"
+
+input_files:
+  cnv_vcf: "test_sample.wf_cnv.vcf.gz"
+
+filtering:
+  min_cnv_length: 10000
+  min_qual: 20
+  pass_only: true
+  max_cn_loss: 1
+  min_cn_gain: 3
+
+cnv_categories:
+  deletions: ["DEL", "LOSS"]
+  duplications: ["DUP", "GAIN", "AMP"]
+
+compute:
+  threads: 2
+
+logging:
+  log_dir: "logs"
+  log_level: "INFO"
+
+archive:
+  archive_root: ""
+  compress: false

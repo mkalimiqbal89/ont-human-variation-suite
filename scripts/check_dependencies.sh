@@ -61,12 +61,15 @@ done
 COMMON_TOOLS="bash awk sort gzip"
 METHYL_TOOLS="bedtools tabix bgzip Rscript"
 SV_TOOLS="bcftools bedtools tabix Rscript"
+CNV_TOOLS="bcftools bedtools tabix Rscript"
 OPTIONAL_TOOLS="pigz"
 SV_R_PACKAGES="yaml ggplot2 scales"
-# The methylation pipeline deliberately requires NO R packages — base graphics
-# and stats only — so that it cannot fail at the figure stage on a machine where
+CNV_R_PACKAGES=""
+# The methylation and CNV pipelines deliberately require NO R packages — base graphics
+# and stats only — so that they cannot fail at the figure stage on a machine where
 # the R library path differs from the login shell's.
 METHYL_R_PACKAGES=""
+
 
 # --- Platform and package manager -------------------------------------------
 OS="$(uname -s)"
@@ -191,6 +194,15 @@ if [[ -z "${ONLY_PIPELINE}" || "${ONLY_PIPELINE}" == "sv" ]]; then
     echo "  R packages (used by stages 05-07):"
     check_r_packages "${SV_R_PACKAGES}"
 fi
+
+if [[ -z "${ONLY_PIPELINE}" || "${ONLY_PIPELINE}" == "cnv" ]]; then
+    echo ""
+    echo "--- CNV pipeline ---"
+    for t in ${CNV_TOOLS}; do check_tool "${t}"; done
+    echo "  R packages:"
+    check_r_packages "${CNV_R_PACKAGES}"
+fi
+
 
 echo ""
 echo "--- Optional (performance only) ---"

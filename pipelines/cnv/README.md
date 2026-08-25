@@ -1,38 +1,54 @@
 # pipelines/cnv — Copy Number Variation
 
-**Status: scaffold only. No analysis logic exists yet.**
+**Status: Released `v1.0.0`**
 
-This directory holds the skeleton the CNV pipeline will be built into, following
-the same shape as `pipelines/sv/` and `pipelines/methylation/`: numbered stage
-scripts under `scripts/bash/` (and `scripts/R/` for anything that needs
-plotting or statistics), a per-sample `config/pipeline_config.yaml`, and
-`results/` / `logs/` / `tests/` / `docs/` alongside.
+Reproducible, config-driven downstream pipeline for processing Spectre Copy Number Variation VCF calls (`*.wf_cnv.vcf.gz`) produced by Epi2ME [`wf-human-variation`](https://github.com/epi2me-labs/wf-human-variation).
 
-**Expected input:** `*.wf_cnv.vcf.gz`, as produced by Spectre via Epi2ME
-`wf-human-variation`. `pipelines/sv/scripts/bash/01_validate_inputs.sh`
-already checks for this file's presence as an adjacent-file sanity check, but
-does not parse or analyze it — that logic belongs here, not there.
+---
 
-**What exists right now:**
-- `scripts/bash/00_setup_env.sh` — sources `common/lib_common.sh` (the same
-  shared config-reading and tool-checking helpers every pipeline in the suite
-  uses) and resolves the generic config fields every pipeline needs
-  (`sample_id`, `raw_sample_prefix`, `input_dir`, `output_dir`, `work_dir`,
-  `log_dir`, `archive_root`). It does **not** yet check CNV-specific tools or
-  read CNV-specific filtering config, because there is no stage 01+ yet to
-  need them. Extend `common_guard_duplicate_keys`'s key list and
-  `common_check_tools`'s tool list here once real stages exist.
-- `config/pipeline_config.example.yaml`, `config/reference_paths.example.yaml`
-  — templates covering only the fields every pipeline shares. Add
-  CNV-specific filtering/annotation fields (analogous to SV's
-  `filtering:`/`sv_categories:` blocks or methylation's `filtering:`/
-  `annotation:` blocks) as real stages are written.
+## Stages
 
-**What does not exist:** input validation beyond the generic checks, VCF
-parsing, CNV-specific filtering, annotation, summary statistics, figures,
-archiving, and tests. None of `pipelines/sv/`'s or `pipelines/methylation/`'s
-hard-won lessons (sample-ID-scoped file resolution, exhaustive multi-block
-annotation parsing, archiving kept separate from orchestration, real
-tool-version checks) have been *applied* here yet — they just haven't been
-needed yet, since there's nothing to apply them to. Whoever builds this out
-should read `CONTRIBUTING.md`'s "Adding a pipeline" section first.
+- `00_setup_env.sh`: Resolves environment variables, config fields, and validates tool binaries (`bcftools`, `bedtools`, `tabix`, `Rscript`).
+- `01_validate_inputs.sh`: Validates input `*.wf_cnv.vcf.gz` and reference BED resources.
+- `02_vcf_to_tsv.sh`: Extracts and flattens Spectre VCF records into `data/processed/<sample_id>.cnv_flat.tsv`.
+- `03_filter_cnv_categories.sh`: Applies length, quality, FILTER status, and copy-number filters. Splits into deletions and duplications/gains tables.
+- `04_run_all.sh`: Orchestrates the complete pipeline end-to-end with fail-fast execution and runtime tracking.
+- `05_annotate_cnvs.R`: Intersects CNV regions with GENCODE gene BED models using `bedtools intersect`.
+- `06_summary_stats.R`: Computes summary statistics (counts, mean/median lengths, total genomic span affected).
+- `07_generate_report.R`: Generates publication-grade base R figures (zero external R package dependencies).
+- `08_archive_results.sh`: Archives run outputs with SHA-256 integrity checksums and longitudinal provenance records.
+
+---
+
+## Quick Start
+
+```bash
+cd pipelines/cnv
+
+cp config/pipeline_config.example.yaml config/pipeline_config.yaml
+cp config/reference_paths.example.yaml config/reference_paths.yaml
+# Edit both config files with sample and reference paths, then:
+
+bash scripts/bash/04_run_all.sh
+```
+
+Run automated tests:
+
+```bash
+bash tests/run_tests.sh
+```
+
+---
+
+## Outputs
+
+- `results/deletions/<sample_id>.deletions.tsv`
+- `results/duplications/<sample_id>.duplications.tsv`
+- `results/gene_cnvs/<sample_id>.annotated_cnvs.tsv`
+- `results/gene_cnvs/<sample_id>.gene_cnv_summary.tsv`
+- `results/qc_summary/<sample_id>.all_cnvs_combined.tsv`
+- `results/qc_summary/<sample_id>.summary_statistics.tsv`
+- `results/qc_summary/figures/<sample_id>.01_cnv_counts_by_category.png`
+- `results/qc_summary/figures/<sample_id>.02_cnv_size_distribution.png`
+- `results/qc_summary/figures/<sample_id>.03_chromosome_cnv_distribution.png`
+- `results/qc_summary/figures/<sample_id>.04_copy_number_distribution.png`

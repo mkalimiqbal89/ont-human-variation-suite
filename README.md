@@ -18,8 +18,9 @@ the assertions and provenance needed for that work to be defensible.
 |---|---|---|---|
 | [`pipelines/sv`](pipelines/sv) | Structural variants | Released `v1.0.0` | `*.wf_sv.vcf.gz` (Sniffles2) |
 | [`pipelines/methylation`](pipelines/methylation) | CpG methylation | Feature-complete, in validation | `*.wf_mods.bedmethyl.gz` (modkit) |
-| `pipelines/cnv` | Copy number | Planned | `*.wf_cnv.vcf.gz` (Spectre) |
+| [`pipelines/cnv`](pipelines/cnv) | Copy number | Released `v1.0.0` | `*.wf_cnv.vcf.gz` (Spectre) |
 | `pipelines/snv` | Small variants | Planned | `*.wf_snp.vcf.gz` (Clair3) |
+
 
 Each pipeline is self-contained: its own `config/`, `scripts/`, `tests/`,
 `.gitignore` and `README`. **Start with the pipeline README, not this one.**

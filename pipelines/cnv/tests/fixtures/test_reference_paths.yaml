@@ -1,0 +1,13 @@
+genome:
+  fasta: "dummy_reference.fa"
+  fasta_index: "dummy_reference.fa.fai"
+  build: "GRCh38"
+
+annotation:
+  gene_bed: "dummy_genes.bed"
+
+tools:
+  bcftools: "bcftools"
+  bedtools: "bedtools"
+  tabix: "tabix"
+  R: "Rscript"

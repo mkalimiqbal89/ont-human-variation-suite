@@ -30,6 +30,17 @@ input_files:
   # Filename as produced by wf-human-variation (relative to paths.input_dir).
   cnv_vcf: "${sample.raw_sample_prefix}.wf_cnv.vcf.gz"
 
+filtering:
+  min_cnv_length: 10000
+  min_qual: 20
+  pass_only: true
+  max_cn_loss: 1
+  min_cn_gain: 3
+
+cnv_categories:
+  deletions: ["DEL", "LOSS"]
+  duplications: ["DUP", "GAIN", "AMP"]
+
 compute:
   threads: 8
 
@@ -40,3 +51,4 @@ logging:
 archive:
   archive_root: "/path/to/internal/archive/root"
   compress: false
+
