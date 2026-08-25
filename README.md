@@ -91,7 +91,17 @@ cp config/reference_paths.example.yaml config/reference_paths.yaml
 # edit both to point at your data and references, then:
 source scripts/bash/00_setup_env.sh
 bash scripts/bash/04_run_all.sh
+
+# archive this run to a local directory outside the repo (set archive.archive_root
+# in pipeline_config.yaml first, e.g. /path/to/archived_analysis):
+bash scripts/bash/08_archive_results.sh
 ```
+
+The SV pipeline follows the same pattern — run `04_run_all.sh`, then
+`bash scripts/bash/08_archive_results.sh` from `pipelines/sv/` with
+`archive.archive_root` set in that pipeline's config. Each pipeline writes to
+`<archive_root>/<SAMPLE_ID>/<pipeline>/<timestamp>/` and appends its own index
+file (`archive_index_sv.tsv` or `archive_index_methylation.tsv`).
 
 Run the tests without any real data — they use synthetic fixtures only:
 
