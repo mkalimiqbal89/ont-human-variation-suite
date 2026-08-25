@@ -1,0 +1,41 @@
+sample:
+  sample_id: "TEST_SAMPLE"
+  raw_sample_prefix: "test_sample"
+  run_description: "Synthetic test fixture for SNV pipeline"
+
+paths:
+  input_dir: "."
+  output_dir: "./results"
+  work_dir: "./work"
+  repo_dir: "."
+
+reference:
+  config_file: "test_reference_paths.yaml"
+
+input_files:
+  snv_vcf: "test_sample.wf_snp.vcf.gz"
+  snv_vcf_clinvar: "test_sample.wf_snp_clinvar.vcf.gz"
+
+filtering:
+  min_dp: 10
+  min_qual: 15
+  min_vaf: 0.15
+  pass_only: true
+
+snv_categories:
+  snvs: ["SNV", "SNP"]
+  indels: ["INDEL", "INS", "DEL"]
+
+clinvar:
+  extract_pathogenic: true
+
+compute:
+  threads: 2
+
+logging:
+  log_dir: "logs"
+  log_level: "INFO"
+
+archive:
+  archive_root: ""
+  compress: false

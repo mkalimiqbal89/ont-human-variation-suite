@@ -1,153 +1,121 @@
 # ONT Human Variation Suite
 
-Reproducible, config-driven pipelines for **downstream** analysis of Oxford
-Nanopore sequencing processed by the Epi2ME
-[`wf-human-variation`](https://github.com/epi2me-labs/wf-human-variation)
-workflow.
+Reproducible, config-driven downstream pipelines for Oxford Nanopore whole-genome sequencing processed by Epi2ME [`wf-human-variation`](https://github.com/epi2me-labs/wf-human-variation).
 
-`wf-human-variation` produces the calls. This suite turns them into per-sample
-tables, figures and archived records, and compares samples to one another — with
-the assertions and provenance needed for that work to be defensible.
+`wf-human-variation` produces the primary variant calls. This suite turns them into per-sample tables, figures, gene annotations, and archived records with the content assertions and provenance needed for defensible research.
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21600726.svg)](https://doi.org/10.5281/zenodo.21600726)
----
-
-## Pipelines
-
-| Pipeline | Variant class | Status | Input from `wf-human-variation` |
-|---|---|---|---|
-| [`pipelines/sv`](pipelines/sv) | Structural variants | Released `v1.0.0` | `*.wf_sv.vcf.gz` (Sniffles2) |
-| [`pipelines/methylation`](pipelines/methylation) | CpG methylation | Feature-complete, in validation | `*.wf_mods.bedmethyl.gz` (modkit) |
-| [`pipelines/cnv`](pipelines/cnv) | Copy number | Released `v1.0.0` | `*.wf_cnv.vcf.gz` (Spectre) |
-| `pipelines/snv` | Small variants | Planned | `*.wf_snp.vcf.gz` (Clair3) |
-
-
-Each pipeline is self-contained: its own `config/`, `scripts/`, `tests/`,
-`.gitignore` and `README`. **Start with the pipeline README, not this one.**
 
 ---
 
-## Shared conventions
+## Pipelines Overview
 
-The pipelines deliberately look alike, so learning one teaches the others.
+| Pipeline | Variant Class | Status | Input File from `wf-human-variation` | Documentation |
+|---|---|---|---|---|
+| [`pipelines/sv`](pipelines/sv) | Structural Variants | Released `v1.0.0` | `<prefix>.wf_sv.vcf.gz` (Sniffles2) | [SV README](pipelines/sv/README.md) |
+| [`pipelines/methylation`](pipelines/methylation) | CpG Methylation | Feature-complete | `<prefix>.wf_mods.bedmethyl.gz` (modkit) | [Methylation README](pipelines/methylation/README.md) |
+| [`pipelines/cnv`](pipelines/cnv) | Copy Number | Released `v1.0.0` | `<prefix>.wf_cnv.vcf.gz` (Spectre) | [CNV README](pipelines/cnv/README.md) |
+| [`pipelines/snv`](pipelines/snv) | Small Variants (SNV/Indel) | Released `v1.0.0` | `<prefix>.wf_snp.vcf.gz` (Clair3) | [SNV README](pipelines/snv/README.md) |
 
-- **Numbered stages.** `00_setup_env.sh` checks tools and exports config;
-  `01_validate_inputs.sh` refuses to proceed on bad input; later stages do the
-  work; `04_run_all.sh` orchestrates and stops at the first failure.
-- **Nothing hardcoded outside config.** One config file per sample, with a
-  tracked `.example.yaml` template. Real configs are gitignored — they carry
-  sample identifiers and absolute paths.
-- **Shared reference resources**, built once and reused across projects:
-  GENCODE-derived gene and promoter BEDs, UCSC CpG islands, chromosome sizes.
-  Paths live in `reference_paths.yaml`, never in code.
-- **Content-level tests.** Assertions check values and reconciliations, not just
-  exit codes. Exit codes miss the failures that matter: a stage succeeding while
-  silently dropping records, double-counting, or writing a truncated output that
-  looks plausible to the next stage.
-- **Fail loudly, leave nothing partial.** A failing stage removes its own
-  incomplete output rather than leaving a file later stages will consume.
-- **Provenance by default.** Each full run records config and reference
-  checksums, tool versions, host, OS, git commit and per-stage timings.
+---
+
+## Interactive Configuration Web UI
+
+Instead of editing raw YAML files by hand, you can launch the **Interactive Web UI**:
+
+```bash
+python3 scripts/launch_ui.py
+```
+
+Features:
+- **Visual File & Path Selector**: Set Sample ID, raw prefix, input directory, output directory, and genome references without touching YAML files.
+- **Live Path Verification**: Includes a "Validate Paths" check to verify file existence on disk before saving.
+- **Pipeline Runner & Real-Time Log Viewer**: Execute dependency checks and run pipelines directly from your browser with live streaming logs.
+
+---
+
+## Shared Architecture & Design Principles
+
+All pipelines follow identical conventions:
+
+- **Numbered Execution Stages**: `00_setup_env.sh` (exports env & tool checks), `01_validate_inputs.sh` (input verification), work stages (`02` to `07`), and `04_run_all.sh` (orchestration).
+- **Configuration Scoping**: Parameters and reference resources live strictly in `config/pipeline_config.yaml` and `config/reference_paths.yaml`. Real config files are gitignored.
+- **Content-Level Assertions**: Stage assertions verify record count reconciliations and value integrity, not just shell exit codes.
+- **Fail-Loud Execution**: Failing stages remove partial outputs to prevent downstream corruption.
+- **Provenance & Integrity**: Automated logging of host OS, tool versions, git commit, SHA-256 checksums, and stage runtimes.
 
 ---
 
 ## Requirements
 
-- bash 4+ (stage 00 is also safe to `source` from zsh), GNU or BSD awk, coreutils
-- [bedtools](https://bedtools.readthedocs.io) 2.31+
-- [htslib](https://www.htslib.org) — `bgzip`, `tabix`
-- [bcftools](https://samtools.github.io/bcftools/) 1.20+ *(SV pipeline only)*
-- R 4.3+ — **base graphics and `stats` only; no R packages required**
-- optional: `pigz`, for faster decompression of 600 MB+ inputs
+- **OS**: macOS (Apple Silicon / Intel) or Linux HPC
+- **Shell & Core**: bash 3.2+, GNU/BSD awk, POSIX coreutils
+- **Bioinformatics Tools**: `bcftools` >= 1.20, `bedtools` >= 2.31, `htslib` (`bgzip`, `tabix`)
+- **R Environment**: R >= 4.3 (**base graphics and `stats` only; no external R packages required for methylation, CNV, or SNV pipelines**)
 
-Check what you have and what you are missing in one command:
+Check dependencies across pipelines in one command:
 
 ```bash
-bash scripts/check_dependencies.sh              # report only
-bash scripts/check_dependencies.sh --install    # install what is missing
+bash scripts/check_dependencies.sh              # Report status
+bash scripts/check_dependencies.sh --install    # Install missing packages via brew/apt/conda
 bash scripts/check_dependencies.sh --pipeline sv
 ```
 
-It detects your platform and package manager, reports each tool per pipeline,
-and checks the R packages the SV stages need. It *runs* each tool rather than
-just looking for it on `PATH` — a binary can be present and still be unusable
-through a broken shared library.
-
-Per-pipeline conda environments are provided as `environment.yml`.
-
-Developed and tested on macOS (Apple silicon, BSD userland) and Linux HPC. Both
-are supported deliberately, and the portability constraints that follow from it
-are documented in `CONTRIBUTING.md`.
-
 ---
 
-## Quick start
+## Suite Quick Start
 
+### 1. Clone the repository
 ```bash
 git clone https://github.com/mkalimiqbal89/ont-human-variation-suite.git
-cd ont-human-variation-suite/pipelines/methylation
+cd ont-human-variation-suite
+```
+
+### 2. Configure via Interactive Web UI (Recommended)
+```bash
+python3 scripts/launch_ui.py
+```
+
+### 3. Or Configure via Command Line
+```bash
+cd pipelines/sv # or methylation, cnv, snv
 
 cp config/pipeline_config.example.yaml config/pipeline_config.yaml
 cp config/reference_paths.example.yaml config/reference_paths.yaml
-# edit both to point at your data and references, then:
+# Edit config files to specify your sample and reference paths, then:
+
 source scripts/bash/00_setup_env.sh
 bash scripts/bash/04_run_all.sh
 
-# archive this run to a local directory outside the repo (set archive.archive_root
-# in pipeline_config.yaml first, e.g. /path/to/archived_analysis):
+# Archive results to institutional storage:
 bash scripts/bash/08_archive_results.sh
 ```
 
-The SV pipeline follows the same pattern — run `04_run_all.sh`, then
-`bash scripts/bash/08_archive_results.sh` from `pipelines/sv/` with
-`archive.archive_root` set in that pipeline's config. Each pipeline writes to
-`<archive_root>/<SAMPLE_ID>/<pipeline>/<timestamp>/` and appends its own index
-file (`archive_index_sv.tsv` or `archive_index_methylation.tsv`).
+---
 
-Run the tests without any real data — they use synthetic fixtures only:
+## Automated Test Suites
+
+Run the regression test suites across pipelines using synthetic test fixtures:
 
 ```bash
-bash pipelines/methylation/tests/run_tests.sh
 bash pipelines/sv/tests/run_tests.sh
+bash pipelines/methylation/tests/run_tests.sh
+bash pipelines/cnv/tests/run_tests.sh
+bash pipelines/snv/tests/run_tests.sh
 ```
 
 ---
 
-## Documentation
+## Documentation Index
 
-- [`pipelines/methylation/docs/COMPARISON_CAVEATS.md`](pipelines/methylation/docs/COMPARISON_CAVEATS.md) — **read this before
-  quoting a p-value from the cross-sample comparison.** Pooled-read tests on
-  long-read data without biological replication are anti-conservative. The
-  document explains why, and what the output is legitimately good for.
-- [`docs/AI_USAGE.md`](docs/AI_USAGE.md) — disclosure of AI assistance used in
-  development, including the errors it introduced and how each was caught.
-- [`CHANGELOG.md`](CHANGELOG.md) — what changed, and why.
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — support expectations, testing
-  philosophy, portability rules.
-
-Per-pipeline methods rationale lives in each pipeline's `docs/METHODS.md`.
+- [`pipelines/methylation/docs/COMPARISON_CAVEATS.md`](pipelines/methylation/docs/COMPARISON_CAVEATS.md) — Statistical considerations for cross-sample methylation comparisons.
+- [`docs/AI_USAGE.md`](docs/AI_USAGE.md) — Disclosure of AI assistance in suite development.
+- [`CHANGELOG.md`](CHANGELOG.md) — Release notes and version history.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — Testing philosophy, portability rules, and pull request guidelines.
 
 ---
 
-## Status and scope
+## License & Citation
 
-Research software developed in a cancer genomics research setting, currently
-applied to haemophagocytic lymphohistiocytosis (HLH) samples. Offered in the hope
-it is useful to others working downstream of `wf-human-variation`.
-
-**This is not a validated diagnostic tool and must not be used for clinical
-decision-making.**
-
-Issues and pull requests are welcome — see `CONTRIBUTING.md` for what makes a
-useful bug report, and please do not attach real patient data.
-
----
-
-## Licence
-
-MIT — see [`LICENSE`](LICENSE).
-
-## Citation
-
-See [`CITATION.cff`](CITATION.cff); GitHub renders a "Cite this repository"
-button from it.
+- **License**: MIT — see [`LICENSE`](LICENSE).
+- **Citation**: See [`CITATION.cff`](CITATION.cff).

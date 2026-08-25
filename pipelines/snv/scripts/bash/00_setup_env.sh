@@ -62,6 +62,7 @@ common_guard_duplicate_keys "${CONFIG_FILE}" \
     sample_id raw_sample_prefix \
     input_dir output_dir work_dir repo_dir \
     config_file snv_vcf snv_vcf_clinvar \
+    min_dp min_qual min_vaf pass_only \
     threads log_dir archive_root \
     || { return 1 2>/dev/null || exit 1; }
 
@@ -72,12 +73,16 @@ INPUT_DIR="$(common_yaml_get "${CONFIG_FILE}" 'input_dir')"
 OUTPUT_DIR="$(common_yaml_get "${CONFIG_FILE}" 'output_dir')"
 WORK_DIR="$(common_yaml_get "${CONFIG_FILE}" 'work_dir')"
 REPO_DIR_CFG="$(common_yaml_get "${CONFIG_FILE}" 'repo_dir')"
+MIN_DP="$(common_yaml_get "${CONFIG_FILE}" 'min_dp' || echo "10")"
+MIN_QUAL="$(common_yaml_get "${CONFIG_FILE}" 'min_qual' || echo "15")"
+MIN_VAF="$(common_yaml_get "${CONFIG_FILE}" 'min_vaf' || echo "0.15")"
+PASS_ONLY="$(common_yaml_get "${CONFIG_FILE}" 'pass_only' || echo "true")"
 THREADS="$(common_yaml_get "${CONFIG_FILE}" 'threads')"
 ARCHIVE_ROOT="$(common_yaml_get "${CONFIG_FILE}" 'archive_root')"
 LOG_DIR="$(common_resolve_dir "$(common_yaml_get "${CONFIG_FILE}" 'log_dir')" "${REPO_DIR}")"
 
 export SAMPLE_ID RAW_SAMPLE_PREFIX INPUT_DIR OUTPUT_DIR WORK_DIR REPO_DIR_CFG
-export THREADS ARCHIVE_ROOT LOG_DIR
+export MIN_DP MIN_QUAL MIN_VAF PASS_ONLY THREADS ARCHIVE_ROOT LOG_DIR
 
 SNV_VCF_NAME="$(common_resolve_filename "${CONFIG_FILE}" 'snv_vcf' "${RAW_SAMPLE_PREFIX}")"
 SNV_VCF_CLINVAR_NAME="$(common_resolve_filename "${CONFIG_FILE}" 'snv_vcf_clinvar' "${RAW_SAMPLE_PREFIX}")"
@@ -89,15 +94,13 @@ echo "Output dir    : ${OUTPUT_DIR}"
 echo "Work dir      : ${WORK_DIR}"
 
 # --- Tools -------------------------------------------------------------------
-# Baseline VCF-handling tools only. Add whatever this pipeline's real stages
-# turn out to need.
 echo ""
 echo "=== Tool check ==="
 mkdir -p "${LOG_DIR}"
 TOOL_VERSION_LOG="${LOG_DIR}/tool_versions.txt"
 export TOOL_VERSION_LOG
 
-common_check_tools "${TOOL_VERSION_LOG}" bcftools tabix \
+common_check_tools "${TOOL_VERSION_LOG}" bcftools bedtools tabix Rscript \
     || { return 1 2>/dev/null || exit 1; }
 
 echo ""
@@ -105,6 +108,12 @@ echo "Tool versions recorded to: ${TOOL_VERSION_LOG}"
 
 # --- Working directories -----------------------------------------------------
 mkdir -p "${OUTPUT_DIR}" "${WORK_DIR}" "${LOG_DIR}"
+mkdir -p "${OUTPUT_DIR}/snvs" \
+         "${OUTPUT_DIR}/indels" \
+         "${OUTPUT_DIR}/clinvar" \
+         "${OUTPUT_DIR}/gene_snvs" \
+         "${OUTPUT_DIR}/qc_summary"
 
 echo ""
-echo "=== [00_setup_env.sh] Environment ready. (scaffold pipeline — no stage 01+ yet) ==="
+echo "=== [00_setup_env.sh] Environment ready. ==="
+

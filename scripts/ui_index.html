@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ONT Human Variation Suite — Configuration & Execution Control</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-bg: rgba(30, 41, 59, 0.85);
+      --panel-border: rgba(255, 255, 255, 0.1);
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--panel-border);
+    }
+    header h1 { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+    header p { font-size: 0.9rem; color: var(--text-muted); }
+
+    .tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .tab-btn {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      color: var(--text-muted);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .tab-btn:hover { color: var(--text-main); border-color: var(--accent); }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #0f172a;
+      border-color: var(--accent);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .path-row {
+      display: flex;
+      gap: 8px;
+    }
+    .path-status {
+      font-size: 0.75rem;
+      margin-top: 4px;
+    }
+    .status-ok { color: var(--success); }
+    .status-fail { color: var(--danger); }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .btn {
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: #0f172a; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-success { background: var(--success); color: #0f172a; }
+    .btn-secondary { background: rgba(255, 255, 255, 0.1); color: var(--text-main); }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
+
+    .console-card {
+      grid-column: span 2;
+    }
+    #console {
+      background: #020617;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.85rem;
+      color: #38bdf8;
+      height: 250px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .console-card { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1>ONT Human Variation Suite</h1>
+      <p>Interactive Configuration & Pipeline Control Center</p>
+    </div>
+    <div id="connection-status" style="font-size: 0.85rem; color: var(--success);">● Server Connected</div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchPipeline('sv')">Structural Variants (SV)</button>
+    <button class="tab-btn" onclick="switchPipeline('methylation')">CpG Methylation</button>
+    <button class="tab-btn" onclick="switchPipeline('cnv')">Copy Number (CNV)</button>
+    <button class="tab-btn" onclick="switchPipeline('snv')">Small Variants (SNV/Indel)</button>
+  </div>
+
+  <div class="grid">
+    <!-- Card 1: Sample & Directory Config -->
+    <div class="card">
+      <h2>📁 Sample & Path Settings</h2>
+      
+      <div class="form-group">
+        <label>Sample ID (Anonymized)</label>
+        <input type="text" id="sample_id" placeholder="e.g. SAMPLE_01">
+      </div>
+
+      <div class="form-group">
+        <label>Raw Sample Prefix (Epi2ME Output Prefix)</label>
+        <input type="text" id="raw_sample_prefix" placeholder="e.g. 20260825_P10_WGS">
+      </div>
+
+      <div class="form-group">
+        <label>Input Directory (Epi2ME Outputs)</label>
+        <input type="text" id="input_dir" placeholder="/path/to/epi2me/output">
+        <div id="status_input_dir" class="path-status"></div>
+      </div>
+
+      <div class="form-group">
+        <label>Output Directory (Results)</label>
+        <input type="text" id="output_dir" placeholder="/path/to/results">
+      </div>
+
+      <div class="form-group">
+        <label>Work Directory (Scratch Files)</label>
+        <input type="text" id="work_dir" placeholder="/path/to/work">
+      </div>
+    </div>
+
+    <!-- Card 2: References & Parameters -->
+    <div class="card">
+      <h2>🧬 Reference & Filtering Parameters</h2>
+
+      <div class="form-group">
+        <label>GENCODE Gene BED File</label>
+        <input type="text" id="gene_bed" placeholder="/path/to/gencode.genes.bed">
+        <div id="status_gene_bed" class="path-status"></div>
+      </div>
+
+      <div class="form-group">
+        <label>Min Quality (QUAL)</label>
+        <input type="number" id="min_qual" value="20">
+      </div>
+
+      <div class="form-group">
+        <label>Min VAF (Variant Allele Frequency)</label>
+        <input type="number" step="0.05" id="min_vaf" value="0.15">
+      </div>
+
+      <div class="form-group">
+        <label>Min Depth / Support</label>
+        <input type="number" id="min_dp" value="10">
+      </div>
+
+      <div class="form-group">
+        <label>PASS Only Variants</label>
+        <select id="pass_only">
+          <option value="true">Yes (Filter == PASS only)</option>
+          <option value="false">No (Include non-PASS calls)</option>
+        </select>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="validatePaths()">Validate Paths</button>
+        <button class="btn btn-primary" onclick="saveConfig()">Save Config</button>
+      </div>
+    </div>
+
+    <!-- Card 3: Execution Control & Live Console -->
+    <div class="card console-card">
+      <h2>🖥️ Execution Console</h2>
+      <div class="actions" style="margin-bottom: 12px;">
+        <button class="btn btn-secondary" onclick="checkDependencies()">Check Dependencies</button>
+        <button class="btn btn-success" onclick="runPipeline()">Run Pipeline (04_run_all.sh)</button>
+      </div>
+      <div id="console">Select a pipeline and click "Save Config" or "Run Pipeline"...</div>
+    </div>
+  </div>
+
+  <script>
+    let currentPipeline = 'sv';
+
+    function log(msg) {
+      const el = document.getElementById('console');
+      el.textContent += msg + '\n';
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('console').textContent = '';
+    }
+
+    function switchPipeline(name) {
+      currentPipeline = name;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      log(`Switched to pipeline: ${name}`);
+      loadConfig();
+    }
+
+    async function loadConfig() {
+      try {
+        const res = await fetch(`/api/config?pipeline=${currentPipeline}`);
+        const data = await res.json();
+        if (data.ok) {
+          document.getElementById('sample_id').value = data.config.sample_id || 'SAMPLE_01';
+          document.getElementById('raw_sample_prefix').value = data.config.raw_sample_prefix || 'sample_01';
+          document.getElementById('input_dir').value = data.config.input_dir || '';
+          document.getElementById('output_dir').value = data.config.output_dir || '';
+          document.getElementById('work_dir').value = data.config.work_dir || '';
+          document.getElementById('gene_bed').value = data.config.gene_bed || '';
+          if (data.config.min_qual) document.getElementById('min_qual').value = data.config.min_qual;
+          if (data.config.min_vaf) document.getElementById('min_vaf').value = data.config.min_vaf;
+          if (data.config.min_dp) document.getElementById('min_dp').value = data.config.min_dp;
+          log(`Loaded config for ${currentPipeline}.`);
+        }
+      } catch (err) {
+        log(`Error loading config: ${err.message}`);
+      }
+    }
+
+    async function saveConfig() {
+      const payload = {
+        pipeline: currentPipeline,
+        sample_id: document.getElementById('sample_id').value,
+        raw_sample_prefix: document.getElementById('raw_sample_prefix').value,
+        input_dir: document.getElementById('input_dir').value,
+        output_dir: document.getElementById('output_dir').value,
+        work_dir: document.getElementById('work_dir').value,
+        gene_bed: document.getElementById('gene_bed').value,
+        min_qual: document.getElementById('min_qual').value,
+        min_vaf: document.getElementById('min_vaf').value,
+        min_dp: document.getElementById('min_dp').value,
+        pass_only: document.getElementById('pass_only').value
+      };
+
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.ok) {
+          log(`[SUCCESS] Config saved for ${currentPipeline}!`);
+        } else {
+          log(`[ERROR] Failed to save config: ${data.error}`);
+        }
+      } catch (err) {
+        log(`[ERROR] ${err.message}`);
+      }
+    }
+
+    async function validatePaths() {
+      const paths = {
+        input_dir: document.getElementById('input_dir').value,
+        gene_bed: document.getElementById('gene_bed').value
+      };
+      log('Validating paths on disk...');
+
+      for (const [key, val] of Object.entries(paths)) {
+        if (!val) continue;
+        const res = await fetch('/api/validate-paths', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: val })
+        });
+        const data = await res.json();
+        const statusEl = document.getElementById(`status_${key}`);
+        if (statusEl) {
+          if (data.exists) {
+            statusEl.textContent = '✓ Path exists';
+            statusEl.className = 'path-status status-ok';
+          } else {
+            statusEl.textContent = '✗ Path not found';
+            statusEl.className = 'path-status status-fail';
+          }
+        }
+      }
+    }
+
+    async function checkDependencies() {
+      clearLog();
+      log(`Checking dependencies for pipeline: ${currentPipeline}...`);
+      try {
+        const res = await fetch('/api/check-deps', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pipeline: currentPipeline })
+        });
+        const data = await res.json();
+        log(data.output);
+      } catch (err) {
+        log(`[ERROR] ${err.message}`);
+      }
+    }
+
+    async function runPipeline() {
+      clearLog();
+      log(`Launching pipeline 04_run_all.sh for ${currentPipeline}...`);
+      try {
+        const res = await fetch('/api/run-pipeline', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pipeline: currentPipeline })
+        });
+        const data = await res.json();
+        log(data.output);
+      } catch (err) {
+        log(`[ERROR] ${err.message}`);
+      }
+    }
+
+    // Initial load
+    loadConfig();
+  </script>
+</body>
+</html>

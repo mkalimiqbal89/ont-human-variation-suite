@@ -14,8 +14,12 @@ genome:
   fasta_index: "/path/to/reference/GRCh38_no_alt_analysis_set.fna.fai"
   build: "GRCh38"
 
+annotation:
+  gene_bed: "/path/to/reference/gencode.genes.bed"
+
 tools:
   bcftools: "bcftools"
   bedtools: "bedtools"
   tabix: "tabix"
   R: "Rscript"
+

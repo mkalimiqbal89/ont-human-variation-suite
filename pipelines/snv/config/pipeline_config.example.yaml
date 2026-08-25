@@ -31,6 +31,19 @@ input_files:
   snv_vcf: "${sample.raw_sample_prefix}.wf_snp.vcf.gz"
   snv_vcf_clinvar: "${sample.raw_sample_prefix}.wf_snp_clinvar.vcf.gz"  # optional
 
+filtering:
+  min_dp: 10
+  min_qual: 15
+  min_vaf: 0.15
+  pass_only: true
+
+snv_categories:
+  snvs: ["SNV", "SNP"]
+  indels: ["INDEL", "INS", "DEL"]
+
+clinvar:
+  extract_pathogenic: true
+
 compute:
   threads: 8
 
@@ -41,3 +54,4 @@ logging:
 archive:
   archive_root: "/path/to/internal/archive/root"
   compress: false
+
