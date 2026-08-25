@@ -118,6 +118,26 @@ Or run the whole per-sample pipeline in one command:
 bash scripts/bash/04_run_all.sh
 ```
 
+When the run finishes, archive results to a local directory outside the repo
+(separate step — `04_run_all.sh` does not call this for you). Set
+`archive.archive_root` in `config/pipeline_config.yaml` to your longitudinal
+store (for example `/Volumes/Extreme_SSD/Bioinformatics_KAL/archived_analysis`),
+then:
+
+```bash
+bash scripts/bash/08_archive_results.sh
+# or, for a sample-specific config:
+bash scripts/bash/08_archive_results.sh config/pipeline_config_sample02.yaml
+# preview what would be copied, without writing:
+bash scripts/bash/08_archive_results.sh --dry-run
+```
+
+Each archive lands under
+`<archive_root>/<SAMPLE_ID>/methylation/<timestamp>/` with checksums, configs,
+logs, and an appended row in `archive_index_methylation.tsv`. See
+[Archiving (stage 08)](#archiving-stage-08) below for the full layout and
+guards.
+
 It stops at the first failing stage rather than running later ones on incomplete
 output, and prints the resume command. Useful flags: `--list`, `--dry-run`,
 `--from NN`, `--to NN`, `--only NN`, `--skip-validate`.
@@ -201,6 +221,22 @@ Okabe-Ito, which is colour-blind safe and survives greyscale printing.
 ---
 
 ## Archiving (stage 08)
+
+After a successful `04_run_all.sh` run:
+
+```bash
+bash scripts/bash/08_archive_results.sh
+# or, for a sample-specific config:
+bash scripts/bash/08_archive_results.sh config/pipeline_config_sample02.yaml
+# preview without copying:
+bash scripts/bash/08_archive_results.sh --dry-run
+```
+
+Set `archive.archive_root` in `config/pipeline_config.yaml` first — use a path
+**outside** this repo (for example
+`/Volumes/Extreme_SSD/Bioinformatics_KAL/archived_analysis`). If
+`archive_root` is unset or still the placeholder, archiving is skipped with a
+message rather than failing.
 
 ```
 <archive_root>/
