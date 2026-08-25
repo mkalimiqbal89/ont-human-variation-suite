@@ -107,6 +107,23 @@ Run everything in one command:
 bash scripts/bash/04_run_all.sh
 ```
 
+When the run finishes, archive results to a local directory outside the repo
+(separate step — `04_run_all.sh` does not call this for you). Set
+`archive.archive_root` in `config/pipeline_config.yaml` to your longitudinal
+store (for example `/Volumes/Extreme_SSD/Bioinformatics_KAL/archived_analysis`),
+then:
+
+```bash
+bash scripts/bash/08_archive_results.sh
+# or, for a sample-specific config:
+bash scripts/bash/08_archive_results.sh config/pipeline_config_sample02.yaml
+```
+
+Each archive lands under `<archive_root>/<SAMPLE_ID>/sv/<timestamp>/` with
+checksums, configs, logs, and an appended row in `archive_index_sv.tsv`. See
+[Archiving results](#archiving-results-internal-use-only--never-pushed-to-github)
+below for details.
+
 Or run steps individually (useful when developing/debugging one step):
 
 ```bash
