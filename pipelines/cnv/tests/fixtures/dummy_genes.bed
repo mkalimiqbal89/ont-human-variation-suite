@@ -1,3 +1,6 @@
-chr1	12000	18000	GENE_A	.	+
-chr1	60000	70000	GENE_B	.	+
-chr2	105000	115000	GENE_C	.	-
+chr1	900	1100	ENSGA.1	GENE_A	protein_coding	+
+chr1	950	1200	ENSGB.1	GENE_B	lncRNA	-
+chr1	5000	5200	ENSGC.1	GENE_C	protein_coding	+
+chr1	12000	18000	ENSGD.1	GENE_D	protein_coding	+
+chr1	60000	70000	ENSGE.1	GENE_E	protein_coding	+
+chr2	105000	115000	ENSGF.1	GENE_F	protein_coding	-
