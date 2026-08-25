@@ -85,18 +85,11 @@ check_vcf "SNV VCF" "${INPUT_DIR}/${SNV_VCF_NAME}" true
 # --- Reference bundle check --------------------------------------------------
 echo ""
 echo "--- Reference files (per reference.config_file in pipeline_config.yaml) ---"
-REF_CONFIG_RELATIVE="$(grep -E '^[[:space:]]*config_file:' "${CONFIG_FILE}" | head -n1 | sed -E 's/^[^:]+:[[:space:]]*"?//; s/"?[[:space:]]*$//')"
-if [[ -z "${REF_CONFIG_RELATIVE}" ]]; then
+REF_CONFIG="$(common_ref_config "${CONFIG_FILE}" "${REPO_DIR}" 2>/dev/null || true)"
+if [[ -z "${REF_CONFIG}" ]]; then
     echo "  [FAIL] reference.config_file not set in ${CONFIG_FILE}"
     ERRORS=$((ERRORS+1))
-    REF_CONFIG=""
-elif [[ "${REF_CONFIG_RELATIVE}" = /* ]]; then
-    REF_CONFIG="${REF_CONFIG_RELATIVE}"
-else
-    REF_CONFIG="${REPO_DIR}/${REF_CONFIG_RELATIVE}"
-fi
-
-if [[ -n "${REF_CONFIG}" && ! -f "${REF_CONFIG}" ]]; then
+elif [[ ! -f "${REF_CONFIG}" ]]; then
     echo "  [FAIL] Reference config file not found: ${REF_CONFIG}"
     ERRORS=$((ERRORS+1))
     REF_CONFIG=""
@@ -105,8 +98,8 @@ if [[ -n "${REF_CONFIG}" ]]; then
     ref_get() {
         grep -E "^[[:space:]]*${1}:" "${REF_CONFIG}" | head -n1 | sed -E 's/^[^:]+:[[:space:]]*"?//; s/"?[[:space:]]*$//'
     }
-    GENOME_FASTA="$(ref_get 'fasta')"
-    GENE_BED="$(ref_get 'gene_bed')"
+    GENOME_FASTA="$(common_resolve_dir "$(ref_get 'fasta')" "${REPO_DIR}")"
+    GENE_BED="$(common_resolve_dir "$(ref_get 'gene_bed')" "${REPO_DIR}")"
 
     for f in "${GENOME_FASTA}" "${GENE_BED}"; do
         if [[ -f "${f}" ]]; then
