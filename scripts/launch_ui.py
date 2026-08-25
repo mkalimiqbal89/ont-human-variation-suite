@@ -73,6 +73,11 @@ def clean_base_path(path_str, sample_id):
             cleaned = cleaned[:-len(sample_id)-1]
     return cleaned.rstrip("/")
 
+def check_tool(name):
+    import shutil
+    path = shutil.which(name)
+    return {"installed": path is not None, "path": path or ""}
+
 class ReusableHTTPServer(HTTPServer):
     allow_reuse_address = True
 
@@ -140,6 +145,26 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
                     cfg_data.update(self._parse_simple_yaml(baseline_ref))
 
                 self._send_json({"ok": True, "config": cfg_data})
+
+            elif path == "/api/load-fixtures":
+                fixture_dir = os.path.join(REPO_DIR, "pipelines", "sv", "tests", "fixtures")
+                gene_bed = os.path.join(fixture_dir, "dummy_genes.bed")
+                out_dir = os.path.join(REPO_DIR, "results", "suite_sample_01")
+                wrk_dir = os.path.join(REPO_DIR, "work", "suite_sample_01")
+
+                self._send_json({
+                    "ok": True,
+                    "config": {
+                        "sample_id": "TEST_SAMPLE",
+                        "raw_sample_prefix": "test_sample",
+                        "run_name": "Test Fixtures Verification Run",
+                        "input_dir": fixture_dir,
+                        "output_dir": out_dir,
+                        "work_dir": wrk_dir,
+                        "gene_bed": gene_bed,
+                        "archive_root": ""
+                    }
+                })
 
             else:
                 self._send_json({"error": "Not Found"}, 404)
@@ -224,6 +249,23 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
                 min_dp = payload.get("min_dp", "10")
                 pass_only = payload.get("pass_only", "true")
 
+                # Resolve FASTA reference for SV if available
+                sv_fasta = ""
+                if input_dir and os.path.exists(input_dir):
+                    fasta_candidates = glob.glob(os.path.join(input_dir, "*.fa")) + glob.glob(os.path.join(input_dir, "*.fasta")) + glob.glob(os.path.join(input_dir, "*.fna"))
+                    if fasta_candidates:
+                        sv_fasta = fasta_candidates[0]
+                if not sv_fasta:
+                    fixture_fa = os.path.join(REPO_DIR, "pipelines", "sv", "tests", "fixtures", "dummy_reference.fa")
+                    if os.path.exists(fixture_fa):
+                        sv_fasta = fixture_fa
+
+                # Resolve Methylation reference files
+                meth_fixture_dir = os.path.join(REPO_DIR, "pipelines", "methylation", "tests", "fixtures")
+                chrom_sizes = os.path.join(meth_fixture_dir, "test_chrom.sizes")
+                promoter_bed = os.path.join(meth_fixture_dir, "test_promoters.bed")
+                cpg_island_bed = os.path.join(meth_fixture_dir, "test_cpg_islands.bed")
+
                 saved_files = []
                 for pipe in selected_pipelines:
                     if pipe not in PIPELINES:
@@ -259,28 +301,58 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
                         f.write(f"input_files:\n")
                         if pipe == "sv":
                             f.write(f'  sv_vcf: "${{sample.raw_sample_prefix}}.wf_sv.vcf.gz"\n')
-                        elif pipe == "methylation":
-                            f.write(f'  mod_bed: "${{sample.raw_sample_prefix}}.wf_mods.bedmethyl.gz"\n')
-                        elif pipe == "cnv":
                             f.write(f'  cnv_vcf: "${{sample.raw_sample_prefix}}.wf_cnv.vcf.gz"\n')
-                        elif pipe == "snv":
                             f.write(f'  snv_vcf: "${{sample.raw_sample_prefix}}.wf_snp.vcf.gz"\n')
                             f.write(f'  snv_vcf_clinvar: "${{sample.raw_sample_prefix}}.wf_snp_clinvar.vcf.gz"\n')
+                            f.write(f'  str_vcf: "${{sample.raw_sample_prefix}}.wf_str.vcf.gz"\n\n')
+                            f.write(f"filtering:\n")
+                            f.write(f'  min_sv_length: 30\n')
+                            f.write(f'  min_read_support: 4\n')
+                            f.write(f'  min_qual: {min_qual}\n')
+                            f.write(f'  min_vaf: {min_vaf}\n')
+                            f.write(f'  pass_only: {pass_only}\n\n')
+                            f.write(f"sv_categories:\n  deletions: [\"DEL\"]\n  insertions: [\"INS\"]\n  duplications: [\"DUP\"]\n  inversions: [\"INV\"]\n  translocations: [\"BND\", \"TRA\"]\n  complex_rearrangements: [\"CPX\", \"BND_CLUSTER\"]\n\n")
+                        elif pipe == "methylation":
+                            f.write(f'  mod_bed: "${{sample.raw_sample_prefix}}.wf_mods.bedmethyl.gz"\n')
+                            f.write(f'  mod_bedmethyl: "${{sample.raw_sample_prefix}}.wf_mods.bedmethyl.gz"\n')
+                            f.write(f'  mod_bedmethyl_hap1: "${{sample.raw_sample_prefix}}.wf_mods.1.bedmethyl.gz"\n')
+                            f.write(f'  mod_bedmethyl_hap2: "${{sample.raw_sample_prefix}}.wf_mods.2.bedmethyl.gz"\n')
+                            f.write(f'  mod_bedmethyl_ungrouped: "${{sample.raw_sample_prefix}}.wf_mods.ungrouped.bedmethyl.gz"\n\n')
+                            f.write(f"modifications:\n  phased: false\n  primary_mod_code: \"m\"\n  expected_columns: 18\n\n")
+                            f.write(f"filtering:\n  min_coverage: {min_dp}\n  max_coverage: 0\n  primary_contigs_only: true\n  include_contigs_regex: \"^chr([1-9]|1[0-9]|2[0-2]|X|Y)$\"\n  expected_primary_contigs: 24\n\n")
+                            f.write(f"methylation_states:\n  unmethylated_max_percent: 20\n  methylated_min_percent: 80\n\n")
+                            f.write(f"annotation:\n  min_cpgs_per_feature: 5\n  gene_key: \"gene_id\"\n  keep_annotated_cpgs: false\n\n")
+                        elif pipe == "cnv":
+                            f.write(f'  cnv_vcf: "${{sample.raw_sample_prefix}}.wf_cnv.vcf.gz"\n\n')
+                            f.write(f"filtering:\n  min_cnv_length: 10000\n  min_qual: {min_qual}\n  pass_only: {pass_only}\n  max_cn_loss: 1\n  min_cn_gain: 3\n\n")
+                            f.write(f"cnv_categories:\n  deletions: [\"DEL\", \"LOSS\"]\n  duplications: [\"DUP\", \"GAIN\", \"AMP\"]\n\n")
+                        elif pipe == "snv":
+                            f.write(f'  snv_vcf: "${{sample.raw_sample_prefix}}.wf_snp.vcf.gz"\n')
+                            f.write(f'  snv_vcf_clinvar: "${{sample.raw_sample_prefix}}.wf_snp_clinvar.vcf.gz"\n\n')
+                            f.write(f"filtering:\n  min_dp: {min_dp}\n  min_qual: {min_qual}\n  min_vaf: {min_vaf}\n  pass_only: {pass_only}\n\n")
+                            f.write(f"snv_categories:\n  snvs: [\"SNV\", \"SNP\"]\n  indels: [\"INDEL\", \"INS\", \"DEL\"]\n\n")
+                            f.write(f"clinvar:\n  extract_pathogenic: true\n\n")
 
-                        f.write(f"\nfiltering:\n")
-                        f.write(f'  min_qual: {min_qual}\n')
-                        f.write(f'  min_vaf: {min_vaf}\n')
-                        f.write(f'  min_dp: {min_dp}\n')
-                        f.write(f'  pass_only: {pass_only}\n\n')
                         f.write(f"archive:\n")
                         f.write(f'  archive_root: "{archive_root}"\n')
                         f.write(f'  compress: false\n\n')
                         f.write(f"compute:\n  threads: 8\n\nlogging:\n  log_dir: \"logs\"\n")
 
                     with open(ref_path, "w", encoding="utf-8") as f:
-                        f.write(f"genome:\n  build: \"GRCh38\"\n\nannotation:\n")
-                        f.write(f'  gene_bed: "{gene_bed}"\n\n')
-                        f.write(f"tools:\n  bcftools: \"bcftools\"\n  bedtools: \"bedtools\"\n  tabix: \"tabix\"\n  R: \"Rscript\"\n")
+                        if pipe == "sv":
+                            f.write(f"genome:\n  fasta: \"{sv_fasta}\"\n  build: \"GRCh38\"\n\nannotation:\n")
+                            f.write(f'  gene_bed: "{gene_bed}"\n\n')
+                            f.write(f"tools:\n  bcftools: \"bcftools\"\n  bedtools: \"bedtools\"\n  tabix: \"tabix\"\n  R: \"Rscript\"\n")
+                        elif pipe == "methylation":
+                            f.write(f"genome:\n  fasta: \"\"\n  build: \"GRCh38\"\n  chrom_sizes: \"{chrom_sizes}\"\n\nannotation:\n")
+                            f.write(f'  gene_bed: "{gene_bed}"\n')
+                            f.write(f'  promoter_bed: "{promoter_bed}"\n')
+                            f.write(f'  cpg_island_bed: "{cpg_island_bed}"\n\n')
+                            f.write(f"tools:\n  bedtools: \"bedtools\"\n  tabix: \"tabix\"\n  bgzip: \"bgzip\"\n  R: \"Rscript\"\n")
+                        else:
+                            f.write(f"genome:\n  build: \"GRCh38\"\n\nannotation:\n")
+                            f.write(f'  gene_bed: "{gene_bed}"\n\n')
+                            f.write(f"tools:\n  bcftools: \"bcftools\"\n  bedtools: \"bedtools\"\n  tabix: \"tabix\"\n  R: \"Rscript\"\n")
 
                     saved_files.append(pipe)
 
@@ -291,6 +363,73 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
                     "clean_output_dir": base_output_dir,
                     "clean_work_dir": base_work_dir
                 })
+
+            elif parsed.path == "/api/validate-paths":
+                input_dir = payload.get("input_dir", "").strip().rstrip("/")
+                gene_bed = payload.get("gene_bed", "").strip()
+                output_dir = payload.get("output_dir", "").strip().rstrip("/")
+                work_dir = payload.get("work_dir", "").strip().rstrip("/")
+                raw_prefix = payload.get("raw_sample_prefix", "").strip()
+                selected_pipelines = payload.get("pipelines", PIPELINES)
+
+                detected_prefix = auto_detect_prefix(input_dir) if input_dir else ""
+                clean_prefix = detected_prefix or sanitize_prefix(raw_prefix)
+
+                out_parent = os.path.dirname(output_dir) or "."
+                wrk_parent = os.path.dirname(work_dir) or "."
+
+                validation = {
+                    "input_dir": {
+                        "path": input_dir,
+                        "exists": os.path.isdir(input_dir) if input_dir else False,
+                        "readable": os.access(input_dir, os.R_OK) if input_dir and os.path.exists(input_dir) else False,
+                        "detected_prefix": detected_prefix
+                    },
+                    "callsets": {},
+                    "gene_bed": {
+                        "path": gene_bed,
+                        "exists": os.path.isfile(gene_bed) if gene_bed else False,
+                        "readable": os.access(gene_bed, os.R_OK) if gene_bed and os.path.exists(gene_bed) else False
+                    },
+                    "output_dir": {
+                        "path": output_dir,
+                        "exists": os.path.exists(output_dir) if output_dir else False,
+                        "writable": os.access(output_dir, os.W_OK) if output_dir and os.path.exists(output_dir) else (os.access(out_parent, os.W_OK) if output_dir else False)
+                    },
+                    "work_dir": {
+                        "path": work_dir,
+                        "exists": os.path.exists(work_dir) if work_dir else False,
+                        "writable": os.access(work_dir, os.W_OK) if work_dir and os.path.exists(work_dir) else (os.access(wrk_parent, os.W_OK) if work_dir else False)
+                    },
+                    "tools": {
+                        "bcftools": check_tool("bcftools"),
+                        "bedtools": check_tool("bedtools"),
+                        "tabix": check_tool("tabix"),
+                        "Rscript": check_tool("Rscript")
+                    }
+                }
+
+                expected_filenames = {
+                    "sv": f"{clean_prefix}.wf_sv.vcf.gz",
+                    "methylation": f"{clean_prefix}.wf_mods.bedmethyl.gz",
+                    "cnv": f"{clean_prefix}.wf_cnv.vcf.gz",
+                    "snv": f"{clean_prefix}.wf_snp.vcf.gz"
+                }
+
+                for pipe in PIPELINES:
+                    fname = expected_filenames.get(pipe, "")
+                    fpath = os.path.join(input_dir, fname) if (input_dir and fname) else ""
+                    exists = os.path.isfile(fpath) if fpath else False
+                    size = os.path.getsize(fpath) if exists else 0
+                    validation["callsets"][pipe] = {
+                        "expected_file": fname,
+                        "path": fpath,
+                        "exists": exists,
+                        "size_bytes": size,
+                        "selected": pipe in selected_pipelines
+                    }
+
+                self._send_json({"ok": True, "validation": validation})
 
             elif parsed.path == "/api/peek-path":
                 input_dir = payload.get("input_dir", "").strip().rstrip("/")
@@ -336,6 +475,58 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
                     res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                     outputs.append(f"=== Dependency Check [{pipe.upper()}] ===\n{res.stdout}")
                 self._send_json({"ok": True, "output": "\n\n".join(outputs)})
+
+            elif parsed.path == "/api/run-suite-stream":
+                selected_pipelines = payload.get("pipelines", ["sv"])
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Connection", "keep-alive")
+                self.end_headers()
+
+                def send_event(event_type, msg):
+                    try:
+                        data = json.dumps({"type": event_type, "message": msg})
+                        self.wfile.write(f"data: {data}\n\n".encode("utf-8"))
+                        self.wfile.flush()
+                    except Exception:
+                        pass
+
+                send_event("start", f"Starting suite execution for: {', '.join(selected_pipelines)}")
+
+                for pipe in selected_pipelines:
+                    pipe_dir = os.path.join(REPO_DIR, "pipelines", pipe)
+                    script = os.path.join(pipe_dir, "scripts", "bash", "04_run_all.sh")
+                    cfg = os.path.join(pipe_dir, "config", "pipeline_config.yaml")
+
+                    if not os.path.exists(cfg):
+                        send_event("error", f"❌ [{pipe.upper()}] Config not found: {cfg}. Save config first.")
+                        continue
+
+                    send_event("pipeline_start", f"\n====================================================\n▶ LAUNCHING PIPELINE: {pipe.upper()}\n====================================================")
+                    
+                    cmd = ["bash", script, cfg]
+                    proc = subprocess.Popen(cmd, cwd=pipe_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+
+                    for line in iter(proc.stdout.readline, ""):
+                        if not line:
+                            break
+                        send_event("log", line.rstrip())
+
+                    proc.stdout.close()
+                    rc = proc.wait()
+
+                    if rc != 0:
+                        send_event("pipeline_error", f"❌ [{pipe.upper()}] Pipeline failed with exit code {rc}. Aborting suite run.")
+                        send_event("end", f"Suite execution failed at pipeline: {pipe}")
+                        return
+
+                    send_event("pipeline_complete", f"✓ [{pipe.upper()}] Pipeline completed successfully.")
+
+                send_event("end", "✓ Full pipeline suite completed successfully!")
+                return
 
             elif parsed.path == "/api/run-suite":
                 selected_pipelines = payload.get("pipelines", ["sv"])
