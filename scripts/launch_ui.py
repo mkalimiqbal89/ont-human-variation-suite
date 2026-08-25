@@ -2,12 +2,12 @@
 """
 =============================================================================
 launch_ui.py (ONT Human Variation Suite)
-Standalone, zero-dependency Python 3 Web UI server for configuring sample paths,
-reference paths, and parameters, and running pipelines directly from the browser.
+Standalone, zero-dependency Python 3 Web UI server for configuring global sample
+paths, reference paths, and parameters, validating directories with 'ls -l'
+sneak-peek, and running single or multi-pipeline suites directly from the browser.
 
 Usage:
   python3 scripts/launch_ui.py
-  python3 scripts/launch_ui.py --pipeline cnv
   python3 scripts/launch_ui.py --port 8080 --no-browser
 =============================================================================
 """
@@ -15,6 +15,7 @@ Usage:
 import os
 import sys
 import json
+import glob
 import argparse
 import webbrowser
 import subprocess
@@ -24,6 +25,8 @@ from urllib.parse import urlparse, parse_qs
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.dirname(SCRIPT_DIR)
 HTML_FILE = os.path.join(SCRIPT_DIR, "ui_index.html")
+
+PIPELINES = ["sv", "methylation", "cnv", "snv"]
 
 class SuiteUIHandler(BaseHTTPRequestHandler):
 
@@ -43,7 +46,6 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
-        query = parse_qs(parsed.query)
 
         if path == "/" or path == "/index.html":
             if os.path.exists(HTML_FILE):
@@ -53,21 +55,20 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
                 self._send_html("<h1>Error: ui_index.html not found</h1>", 404)
 
         elif path == "/api/config":
-            pipeline = query.get("pipeline", ["sv"])[0]
-            pipe_dir = os.path.join(REPO_DIR, "pipelines", pipeline)
-            cfg_file = os.path.join(pipe_dir, "config", "pipeline_config.yaml")
-            ex_cfg_file = os.path.join(pipe_dir, "config", "pipeline_config.example.yaml")
-            ref_cfg_file = os.path.join(pipe_dir, "config", "reference_paths.yaml")
-            ex_ref_cfg_file = os.path.join(pipe_dir, "config", "reference_paths.example.yaml")
+            # Attempt to read existing config from sv as baseline, or default
+            baseline_cfg = os.path.join(REPO_DIR, "pipelines", "sv", "config", "pipeline_config.yaml")
+            baseline_ref = os.path.join(REPO_DIR, "pipelines", "sv", "config", "reference_paths.yaml")
 
-            target_cfg = cfg_file if os.path.exists(cfg_file) else ex_cfg_file
-            target_ref = ref_cfg_file if os.path.exists(ref_cfg_file) else ex_ref_cfg_file
+            if not os.path.exists(baseline_cfg):
+                baseline_cfg = os.path.join(REPO_DIR, "pipelines", "sv", "config", "pipeline_config.example.yaml")
+            if not os.path.exists(baseline_ref):
+                baseline_ref = os.path.join(REPO_DIR, "pipelines", "sv", "config", "reference_paths.example.yaml")
 
             cfg_data = {}
-            if os.path.exists(target_cfg):
-                cfg_data.update(self._parse_yaml(target_cfg))
-            if os.path.exists(target_ref):
-                cfg_data.update(self._parse_yaml(target_ref))
+            if os.path.exists(baseline_cfg):
+                cfg_data.update(self._parse_simple_yaml(baseline_cfg))
+            if os.path.exists(baseline_ref):
+                cfg_data.update(self._parse_simple_yaml(baseline_ref))
 
             self._send_json({"ok": True, "config": cfg_data})
 
@@ -83,102 +84,181 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
         except Exception:
             payload = {}
 
-        if parsed.path == "/api/config":
-            pipeline = payload.get("pipeline", "sv")
-            pipe_dir = os.path.join(REPO_DIR, "pipelines", pipeline)
-            cfg_dir = os.path.join(pipe_dir, "config")
-            os.makedirs(cfg_dir, exist_ok=True)
+        if parsed.path == "/api/save-config":
+            selected_pipelines = payload.get("pipelines", ["sv"])
+            sample_id = payload.get("sample_id", "SAMPLE_01")
+            raw_prefix = payload.get("raw_sample_prefix", "sample_01")
+            run_name = payload.get("run_name", "Epi2ME Downstream Analysis")
+            input_dir = payload.get("input_dir", "")
+            base_output_dir = payload.get("output_dir", "")
+            base_work_dir = payload.get("work_dir", "")
+            gene_bed = payload.get("gene_bed", "")
+            archive_root = payload.get("archive_root", "")
 
-            cfg_path = os.path.join(cfg_dir, "pipeline_config.yaml")
-            ref_path = os.path.join(cfg_dir, "reference_paths.yaml")
+            # General filters
+            min_qual = payload.get("min_qual", "20")
+            min_vaf = payload.get("min_vaf", "0.15")
+            min_dp = payload.get("min_dp", "10")
+            pass_only = payload.get("pass_only", "true")
 
-            # Write pipeline_config.yaml
-            with open(cfg_path, "w", encoding="utf-8") as f:
-                f.write(f"sample:\n")
-                f.write(f'  sample_id: "{payload.get("sample_id", "SAMPLE_01")}"\n')
-                f.write(f'  raw_sample_prefix: "{payload.get("raw_sample_prefix", "sample_01")}"\n\n')
-                f.write(f"paths:\n")
-                f.write(f'  input_dir: "{payload.get("input_dir", "")}"\n')
-                f.write(f'  output_dir: "{payload.get("output_dir", "")}"\n')
-                f.write(f'  work_dir: "{payload.get("work_dir", "")}"\n')
-                f.write(f'  repo_dir: "{pipe_dir}"\n\n')
-                f.write(f"reference:\n")
-                f.write(f'  config_file: "config/reference_paths.yaml"\n\n')
-                f.write(f"input_files:\n")
-                if pipeline == "sv":
-                    f.write(f'  sv_vcf: "${{sample.raw_sample_prefix}}.wf_sv.vcf.gz"\n')
-                elif pipeline == "methylation":
-                    f.write(f'  mod_bed: "${{sample.raw_sample_prefix}}.wf_mods.bedmethyl.gz"\n')
-                elif pipeline == "cnv":
-                    f.write(f'  cnv_vcf: "${{sample.raw_sample_prefix}}.wf_cnv.vcf.gz"\n')
-                elif pipeline == "snv":
-                    f.write(f'  snv_vcf: "${{sample.raw_sample_prefix}}.wf_snp.vcf.gz"\n')
-                    f.write(f'  snv_vcf_clinvar: "${{sample.raw_sample_prefix}}.wf_snp_clinvar.vcf.gz"\n')
-                f.write(f"\nfiltering:\n")
-                f.write(f'  min_qual: {payload.get("min_qual", 20)}\n')
-                f.write(f'  min_vaf: {payload.get("min_vaf", 0.15)}\n')
-                f.write(f'  min_dp: {payload.get("min_dp", 10)}\n')
-                f.write(f'  pass_only: {payload.get("pass_only", "true")}\n\n')
-                f.write(f"compute:\n  threads: 8\n\nlogging:\n  log_dir: \"logs\"\n")
+            saved_files = []
+            for pipe in selected_pipelines:
+                if pipe not in PIPELINES:
+                    continue
+                pipe_dir = os.path.join(REPO_DIR, "pipelines", pipe)
+                cfg_dir = os.path.join(pipe_dir, "config")
+                os.makedirs(cfg_dir, exist_ok=True)
 
-            # Write reference_paths.yaml
-            with open(ref_path, "w", encoding="utf-8") as f:
-                f.write(f"genome:\n  build: \"GRCh38\"\n\nannotation:\n")
-                f.write(f'  gene_bed: "{payload.get("gene_bed", "")}"\n\n')
-                f.write(f"tools:\n  bcftools: \"bcftools\"\n  bedtools: \"bedtools\"\n  tabix: \"tabix\"\n  R: \"Rscript\"\n")
+                cfg_path = os.path.join(cfg_dir, "pipeline_config.yaml")
+                ref_path = os.path.join(cfg_dir, "reference_paths.yaml")
 
-            self._send_json({"ok": True, "message": f"Saved config to {cfg_path}"})
+                # If multiple pipelines selected, place output in <output_dir>/<sample_id>/<pipeline>/
+                if len(selected_pipelines) > 1 and base_output_dir:
+                    out_dir = os.path.join(base_output_dir, sample_id, pipe)
+                    wrk_dir = os.path.join(base_work_dir, sample_id, pipe) if base_work_dir else os.path.join(pipe_dir, "work")
+                else:
+                    out_dir = base_output_dir if base_output_dir else os.path.join(pipe_dir, "results")
+                    wrk_dir = base_work_dir if base_work_dir else os.path.join(pipe_dir, "work")
 
-        elif parsed.path == "/api/validate-paths":
-            check_path = payload.get("path", "")
-            exists = os.path.exists(check_path) if check_path else False
-            self._send_json({"ok": True, "path": check_path, "exists": exists})
+                # Write pipeline_config.yaml
+                with open(cfg_path, "w", encoding="utf-8") as f:
+                    f.write(f"# Pipeline Config for {pipe.upper()}\n")
+                    f.write(f"sample:\n")
+                    f.write(f'  sample_id: "{sample_id}"\n')
+                    f.write(f'  raw_sample_prefix: "{raw_prefix}"\n')
+                    f.write(f'  run_description: "{run_name}"\n\n')
+                    f.write(f"paths:\n")
+                    f.write(f'  input_dir: "{input_dir}"\n')
+                    f.write(f'  output_dir: "{out_dir}"\n')
+                    f.write(f'  work_dir: "{wrk_dir}"\n')
+                    f.write(f'  repo_dir: "{pipe_dir}"\n\n')
+                    f.write(f"reference:\n")
+                    f.write(f'  config_file: "config/reference_paths.yaml"\n\n')
+                    f.write(f"input_files:\n")
+                    if pipe == "sv":
+                        f.write(f'  sv_vcf: "${{sample.raw_sample_prefix}}.wf_sv.vcf.gz"\n')
+                    elif pipe == "methylation":
+                        f.write(f'  mod_bed: "${{sample.raw_sample_prefix}}.wf_mods.bedmethyl.gz"\n')
+                    elif pipe == "cnv":
+                        f.write(f'  cnv_vcf: "${{sample.raw_sample_prefix}}.wf_cnv.vcf.gz"\n')
+                    elif pipe == "snv":
+                        f.write(f'  snv_vcf: "${{sample.raw_sample_prefix}}.wf_snp.vcf.gz"\n')
+                        f.write(f'  snv_vcf_clinvar: "${{sample.raw_sample_prefix}}.wf_snp_clinvar.vcf.gz"\n')
+
+                    f.write(f"\nfiltering:\n")
+                    f.write(f'  min_qual: {min_qual}\n')
+                    f.write(f'  min_vaf: {min_vaf}\n')
+                    f.write(f'  min_dp: {min_dp}\n')
+                    f.write(f'  pass_only: {pass_only}\n\n')
+                    f.write(f"archive:\n")
+                    f.write(f'  archive_root: "{archive_root}"\n')
+                    f.write(f'  compress: false\n\n')
+                    f.write(f"compute:\n  threads: 8\n\nlogging:\n  log_dir: \"logs\"\n")
+
+                # Write reference_paths.yaml
+                with open(ref_path, "w", encoding="utf-8") as f:
+                    f.write(f"genome:\n  build: \"GRCh38\"\n\nannotation:\n")
+                    f.write(f'  gene_bed: "{gene_bed}"\n\n')
+                    f.write(f"tools:\n  bcftools: \"bcftools\"\n  bedtools: \"bedtools\"\n  tabix: \"tabix\"\n  R: \"Rscript\"\n")
+
+                saved_files.append(pipe)
+
+            self._send_json({"ok": True, "saved_pipelines": saved_files})
+
+        elif parsed.path == "/api/peek-path":
+            input_dir = payload.get("input_dir", "")
+            gene_bed = payload.get("gene_bed", "")
+            output_dir = payload.get("output_dir", "")
+
+            results = {}
+
+            # Check input_dir
+            if input_dir and os.path.exists(input_dir):
+                try:
+                    # Run ls -lh for sneak-peek
+                    ls_res = subprocess.run(["ls", "-lh", input_dir], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                    dir_contents = ls_res.stdout
+                    # Match Epi2ME output files
+                    matching = glob.glob(os.path.join(input_dir, "*.wf_*.gz")) + glob.glob(os.path.join(input_dir, "*.bedmethyl.gz"))
+                    matching_names = [os.path.basename(m) for m in matching]
+
+                    results["input_dir"] = {
+                        "exists": True,
+                        "ls_output": dir_contents[:2000], # truncate preview if large
+                        "matching_files": matching_names
+                    }
+                except Exception as e:
+                    results["input_dir"] = {"exists": True, "error": str(e)}
+            else:
+                results["input_dir"] = {"exists": False}
+
+            # Check gene_bed
+            if gene_bed:
+                results["gene_bed"] = {"exists": os.path.exists(gene_bed)}
+
+            # Check output_dir
+            if output_dir:
+                results["output_dir"] = {"exists": os.path.exists(output_dir)}
+
+            self._send_json({"ok": True, "peek": results})
 
         elif parsed.path == "/api/check-deps":
-            pipeline = payload.get("pipeline", "sv")
-            cmd = ["bash", os.path.join(REPO_DIR, "scripts", "check_dependencies.sh"), "--pipeline", pipeline]
-            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-            self._send_json({"ok": res.returncode == 0, "output": res.stdout})
+            selected_pipelines = payload.get("pipelines", ["sv"])
+            outputs = []
+            for pipe in selected_pipelines:
+                cmd = ["bash", os.path.join(REPO_DIR, "scripts", "check_dependencies.sh"), "--pipeline", pipe]
+                res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                outputs.append(f"=== Dependency Check [{pipe.upper()}] ===\n{res.stdout}")
+            self._send_json({"ok": True, "output": "\n\n".join(outputs)})
 
-        elif parsed.path == "/api/run-pipeline":
-            pipeline = payload.get("pipeline", "sv")
-            pipe_dir = os.path.join(REPO_DIR, "pipelines", pipeline)
-            script = os.path.join(pipe_dir, "scripts", "bash", "04_run_all.sh")
-            cfg = os.path.join(pipe_dir, "config", "pipeline_config.yaml")
+        elif parsed.path == "/api/run-suite":
+            selected_pipelines = payload.get("pipelines", ["sv"])
+            suite_logs = []
 
-            if not os.path.exists(cfg):
-                self._send_json({"ok": False, "output": f"Config not found: {cfg}. Save config first."})
-                return
+            for pipe in selected_pipelines:
+                pipe_dir = os.path.join(REPO_DIR, "pipelines", pipe)
+                script = os.path.join(pipe_dir, "scripts", "bash", "04_run_all.sh")
+                cfg = os.path.join(pipe_dir, "config", "pipeline_config.yaml")
 
-            cmd = ["bash", script, cfg]
-            res = subprocess.run(cmd, cwd=pipe_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-            self._send_json({"ok": res.returncode == 0, "output": res.stdout})
+                if not os.path.exists(cfg):
+                    suite_logs.append(f"❌ [{pipe.upper()}] Config not found: {cfg}. Save config first.")
+                    continue
+
+                suite_logs.append(f"====================================================\n▶ LAUNCHING PIPELINE: {pipe.upper()}\n====================================================")
+                cmd = ["bash", script, cfg]
+                res = subprocess.run(cmd, cwd=pipe_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                suite_logs.append(res.stdout)
+                if res.returncode != 0:
+                    suite_logs.append(f"❌ [{pipe.upper()}] Pipeline failed with exit code {res.returncode}. Aborting suite run.")
+                    break
+
+            self._send_json({"ok": True, "output": "\n".join(suite_logs)})
 
         else:
             self._send_json({"error": "Not Found"}, 404)
 
-    def _parse_yaml(self, filepath):
-        """Simple regex-free scalar YAML key-value parser for simple key-value templates."""
+    def _parse_simple_yaml(self, filepath):
         result = {}
-        with open(filepath, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("#") or ":" not in line:
-                    continue
-                k, v = line.split(":", 1)
-                k = k.strip()
-                v = v.strip().strip('"').strip("'")
-                if k and v and not k.startswith("-"):
-                    result[k] = v
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#") or ":" not in line:
+                        continue
+                    parts = line.split(":", 1)
+                    k = parts[0].strip()
+                    v = parts[1].strip().strip('"').strip("'")
+                    if k and v:
+                        result[k] = v
+        except Exception:
+            pass
         return result
 
     def log_message(self, format, *args):
-        # Quiet standard logging
         return
 
 def main():
     parser = argparse.ArgumentParser(description="Launch ONT Human Variation Suite Web UI")
-    parser.add_argument("--pipeline", default="sv", choices=["sv", "methylation", "cnv", "snv"])
     parser.add_argument("--port", type=int, default=5000)
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
@@ -188,10 +268,9 @@ def main():
 
     url = f"http://localhost:{args.port}"
     print("============================================================")
-    print("  ONT Human Variation Suite — Interactive Web UI")
+    print("  ONT Human Variation Suite — Global Web UI Control")
     print("============================================================")
     print(f"  Server listening on: {url}")
-    print(f"  Selected pipeline  : {args.pipeline}")
     print("  Press Ctrl+C to stop the server.")
     print("============================================================")
 

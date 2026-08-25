@@ -13,9 +13,10 @@ Reproducible, config-driven downstream pipelines for Oxford Nanopore whole-genom
 | Pipeline | Variant Class | Status | Input File from `wf-human-variation` | Documentation |
 |---|---|---|---|---|
 | [`pipelines/sv`](pipelines/sv) | Structural Variants | Released `v1.0.0` | `<prefix>.wf_sv.vcf.gz` (Sniffles2) | [SV README](pipelines/sv/README.md) |
-| [`pipelines/methylation`](pipelines/methylation) | CpG Methylation | Feature-complete | `<prefix>.wf_mods.bedmethyl.gz` (modkit) | [Methylation README](pipelines/methylation/README.md) |
+| [`pipelines/methylation`](pipelines/methylation) | CpG Methylation | Released `v1.0.0` | `<prefix>.wf_mods.bedmethyl.gz` (modkit) | [Methylation README](pipelines/methylation/README.md) |
 | [`pipelines/cnv`](pipelines/cnv) | Copy Number | Released `v1.0.0` | `<prefix>.wf_cnv.vcf.gz` (Spectre) | [CNV README](pipelines/cnv/README.md) |
 | [`pipelines/snv`](pipelines/snv) | Small Variants (SNV/Indel) | Released `v1.0.0` | `<prefix>.wf_snp.vcf.gz` (Clair3) | [SNV README](pipelines/snv/README.md) |
+
 
 ---
 

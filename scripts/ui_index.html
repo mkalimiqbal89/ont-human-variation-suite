@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ONT Human Variation Suite — Configuration & Execution Control</title>
+  <title>ONT Human Variation Suite — Global Control Center</title>
   <style>
     :root {
       --bg-dark: #0f172a;
@@ -38,28 +38,6 @@
     }
     header h1 { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
     header p { font-size: 0.9rem; color: var(--text-muted); }
-
-    .tabs {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    .tab-btn {
-      background: var(--panel-bg);
-      border: 1px solid var(--panel-border);
-      color: var(--text-muted);
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .tab-btn:hover { color: var(--text-main); border-color: var(--accent); }
-    .tab-btn.active {
-      background: var(--accent);
-      color: #0f172a;
-      border-color: var(--accent);
-    }
 
     .grid {
       display: grid;
@@ -109,16 +87,29 @@
       border-color: var(--accent);
     }
 
-    .path-row {
+    .pipeline-selector {
       display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 10px;
+      margin-bottom: 16px;
+    }
+    .pipeline-checkbox {
+      display: flex;
+      align-items: center;
       gap: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--panel-border);
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      user-select: none;
+      transition: all 0.2s;
     }
-    .path-status {
-      font-size: 0.75rem;
-      margin-top: 4px;
-    }
-    .status-ok { color: var(--success); }
-    .status-fail { color: var(--danger); }
+    .pipeline-checkbox input { width: auto; cursor: pointer; }
+    .pipeline-checkbox:hover { border-color: var(--accent); }
 
     .actions {
       display: flex;
@@ -140,6 +131,21 @@
     .btn-secondary { background: rgba(255, 255, 255, 0.1); color: var(--text-main); }
     .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
 
+    .peek-box {
+      background: #020617;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.8rem;
+      color: #a7f3d0;
+      max-height: 180px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      margin-top: 10px;
+      display: none;
+    }
+
     .console-card {
       grid-column: span 2;
     }
@@ -151,7 +157,7 @@
       font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
       font-size: 0.85rem;
       color: #38bdf8;
-      height: 250px;
+      height: 280px;
       overflow-y: auto;
       white-space: pre-wrap;
     }
@@ -167,62 +173,85 @@
   <header>
     <div>
       <h1>ONT Human Variation Suite</h1>
-      <p>Interactive Configuration & Pipeline Control Center</p>
+      <p>Unified Run & Pipeline Control Dashboard</p>
     </div>
     <div id="connection-status" style="font-size: 0.85rem; color: var(--success);">● Server Connected</div>
   </header>
 
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchPipeline('sv')">Structural Variants (SV)</button>
-    <button class="tab-btn" onclick="switchPipeline('methylation')">CpG Methylation</button>
-    <button class="tab-btn" onclick="switchPipeline('cnv')">Copy Number (CNV)</button>
-    <button class="tab-btn" onclick="switchPipeline('snv')">Small Variants (SNV/Indel)</button>
-  </div>
-
   <div class="grid">
-    <!-- Card 1: Sample & Directory Config -->
+    <!-- Card 1: Sample, Run Naming & Global Paths -->
     <div class="card">
-      <h2>📁 Sample & Path Settings</h2>
+      <h2>📁 1. Global Sample & Path Settings</h2>
       
       <div class="form-group">
-        <label>Sample ID (Anonymized)</label>
-        <input type="text" id="sample_id" placeholder="e.g. SAMPLE_01">
+        <label>Analysis Run Name / Description</label>
+        <input type="text" id="run_name" value="PromethION WGS Downstream Analysis">
       </div>
 
       <div class="form-group">
-        <label>Raw Sample Prefix (Epi2ME Output Prefix)</label>
-        <input type="text" id="raw_sample_prefix" placeholder="e.g. 20260825_P10_WGS">
+        <label>Sample ID (Anonymized)</label>
+        <input type="text" id="sample_id" value="SAMPLE_01">
+      </div>
+
+      <div class="form-group">
+        <label>Raw Sample Prefix (Epi2ME File Prefix)</label>
+        <input type="text" id="raw_sample_prefix" value="sample_01">
       </div>
 
       <div class="form-group">
         <label>Input Directory (Epi2ME Outputs)</label>
         <input type="text" id="input_dir" placeholder="/path/to/epi2me/output">
-        <div id="status_input_dir" class="path-status"></div>
       </div>
 
       <div class="form-group">
-        <label>Output Directory (Results)</label>
-        <input type="text" id="output_dir" placeholder="/path/to/results">
+        <label>Shared Output Directory (Results)</label>
+        <input type="text" id="output_dir" placeholder="/path/to/shared/results">
       </div>
 
       <div class="form-group">
         <label>Work Directory (Scratch Files)</label>
-        <input type="text" id="work_dir" placeholder="/path/to/work">
+        <input type="text" id="work_dir" placeholder="/path/to/scratch/work">
+      </div>
+
+      <div class="form-group">
+        <label>Institutional Archive Destination Root</label>
+        <input type="text" id="archive_root" placeholder="/path/to/internal/archive">
       </div>
     </div>
 
-    <!-- Card 2: References & Parameters -->
+    <!-- Card 2: Pipelines Selector & References -->
     <div class="card">
-      <h2>🧬 Reference & Filtering Parameters</h2>
+      <h2>🧬 2. Select Pipelines & References</h2>
 
       <div class="form-group">
-        <label>GENCODE Gene BED File</label>
-        <input type="text" id="gene_bed" placeholder="/path/to/gencode.genes.bed">
-        <div id="status_gene_bed" class="path-status"></div>
+        <label>Select Pipelines to Run (Single or Full Suite)</label>
+        <div style="margin-bottom: 8px;">
+          <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="selectAllPipelines(true)">Select All (Full Suite)</button>
+          <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="selectAllPipelines(false)">Clear</button>
+        </div>
+        <div class="pipeline-selector">
+          <label class="pipeline-checkbox">
+            <input type="checkbox" id="pipe_sv" value="sv" checked> Structural Variants (SV)
+          </label>
+          <label class="pipeline-checkbox">
+            <input type="checkbox" id="pipe_methylation" value="methylation" checked> CpG Methylation
+          </label>
+          <label class="pipeline-checkbox">
+            <input type="checkbox" id="pipe_cnv" value="cnv" checked> Copy Number (CNV)
+          </label>
+          <label class="pipeline-checkbox">
+            <input type="checkbox" id="pipe_snv" value="snv" checked> Small Variants (SNV/Indel)
+          </label>
+        </div>
       </div>
 
       <div class="form-group">
-        <label>Min Quality (QUAL)</label>
+        <label>GENCODE Gene BED Annotation File</label>
+        <input type="text" id="gene_bed" placeholder="/path/to/gencode.genes.bed">
+      </div>
+
+      <div class="form-group">
+        <label>Min Quality (QUAL Threshold)</label>
         <input type="number" id="min_qual" value="20">
       </div>
 
@@ -236,34 +265,26 @@
         <input type="number" id="min_dp" value="10">
       </div>
 
-      <div class="form-group">
-        <label>PASS Only Variants</label>
-        <select id="pass_only">
-          <option value="true">Yes (Filter == PASS only)</option>
-          <option value="false">No (Include non-PASS calls)</option>
-        </select>
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="peekDirectory()">Validate Paths & Sneak Peek</button>
+        <button class="btn btn-primary" onclick="saveGlobalConfig()">Save Global Config</button>
       </div>
 
-      <div class="actions">
-        <button class="btn btn-secondary" onclick="validatePaths()">Validate Paths</button>
-        <button class="btn btn-primary" onclick="saveConfig()">Save Config</button>
-      </div>
+      <div id="peek_box" class="peek-box"></div>
     </div>
 
     <!-- Card 3: Execution Control & Live Console -->
     <div class="card console-card">
-      <h2>🖥️ Execution Console</h2>
+      <h2>🖥️ 3. Execution Console</h2>
       <div class="actions" style="margin-bottom: 12px;">
         <button class="btn btn-secondary" onclick="checkDependencies()">Check Dependencies</button>
-        <button class="btn btn-success" onclick="runPipeline()">Run Pipeline (04_run_all.sh)</button>
+        <button class="btn btn-success" onclick="runSuite()">Run Selected Pipelines</button>
       </div>
-      <div id="console">Select a pipeline and click "Save Config" or "Run Pipeline"...</div>
+      <div id="console">Set paths once above, then click "Save Global Config" or "Run Selected Pipelines"...</div>
     </div>
   </div>
 
   <script>
-    let currentPipeline = 'sv';
-
     function log(msg) {
       const el = document.getElementById('console');
       el.textContent += msg + '\n';
@@ -274,103 +295,136 @@
       document.getElementById('console').textContent = '';
     }
 
-    function switchPipeline(name) {
-      currentPipeline = name;
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
-      log(`Switched to pipeline: ${name}`);
-      loadConfig();
+    function getSelectedPipelines() {
+      const selected = [];
+      ['sv', 'methylation', 'cnv', 'snv'].forEach(p => {
+        if (document.getElementById(`pipe_${p}`).checked) selected.push(p);
+      });
+      return selected;
+    }
+
+    function selectAllPipelines(val) {
+      ['sv', 'methylation', 'cnv', 'snv'].forEach(p => {
+        document.getElementById(`pipe_${p}`).checked = val;
+      });
     }
 
     async function loadConfig() {
       try {
-        const res = await fetch(`/api/config?pipeline=${currentPipeline}`);
+        const res = await fetch('/api/config');
         const data = await res.json();
-        if (data.ok) {
-          document.getElementById('sample_id').value = data.config.sample_id || 'SAMPLE_01';
-          document.getElementById('raw_sample_prefix').value = data.config.raw_sample_prefix || 'sample_01';
-          document.getElementById('input_dir').value = data.config.input_dir || '';
-          document.getElementById('output_dir').value = data.config.output_dir || '';
-          document.getElementById('work_dir').value = data.config.work_dir || '';
-          document.getElementById('gene_bed').value = data.config.gene_bed || '';
-          if (data.config.min_qual) document.getElementById('min_qual').value = data.config.min_qual;
-          if (data.config.min_vaf) document.getElementById('min_vaf').value = data.config.min_vaf;
-          if (data.config.min_dp) document.getElementById('min_dp').value = data.config.min_dp;
-          log(`Loaded config for ${currentPipeline}.`);
+        if (data.ok && data.config) {
+          if (data.config.sample_id) document.getElementById('sample_id').value = data.config.sample_id;
+          if (data.config.raw_sample_prefix) document.getElementById('raw_sample_prefix').value = data.config.raw_sample_prefix;
+          if (data.config.run_description) document.getElementById('run_name').value = data.config.run_description;
+          if (data.config.input_dir) document.getElementById('input_dir').value = data.config.input_dir;
+          if (data.config.output_dir) document.getElementById('output_dir').value = data.config.output_dir;
+          if (data.config.work_dir) document.getElementById('work_dir').value = data.config.work_dir;
+          if (data.config.gene_bed) document.getElementById('gene_bed').value = data.config.gene_bed;
+          if (data.config.archive_root) document.getElementById('archive_root').value = data.config.archive_root;
+          log('Global suite configuration loaded.');
         }
       } catch (err) {
-        log(`Error loading config: ${err.message}`);
+        log(`Notice: No previous config found. Default settings loaded.`);
       }
     }
 
-    async function saveConfig() {
+    async function saveGlobalConfig() {
+      const selected = getSelectedPipelines();
+      if (selected.length === 0) {
+        log('[WARNING] Please select at least one pipeline!');
+        return;
+      }
+
       const payload = {
-        pipeline: currentPipeline,
+        pipelines: selected,
+        run_name: document.getElementById('run_name').value,
         sample_id: document.getElementById('sample_id').value,
         raw_sample_prefix: document.getElementById('raw_sample_prefix').value,
         input_dir: document.getElementById('input_dir').value,
         output_dir: document.getElementById('output_dir').value,
         work_dir: document.getElementById('work_dir').value,
         gene_bed: document.getElementById('gene_bed').value,
+        archive_root: document.getElementById('archive_root').value,
         min_qual: document.getElementById('min_qual').value,
         min_vaf: document.getElementById('min_vaf').value,
         min_dp: document.getElementById('min_dp').value,
-        pass_only: document.getElementById('pass_only').value
+        pass_only: 'true'
       };
 
       try {
-        const res = await fetch('/api/config', {
+        const res = await fetch('/api/save-config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (data.ok) {
-          log(`[SUCCESS] Config saved for ${currentPipeline}!`);
+          log(`[SUCCESS] Configuration saved for: ${data.saved_pipelines.join(', ')}`);
         } else {
-          log(`[ERROR] Failed to save config: ${data.error}`);
+          log(`[ERROR] Save failed: ${data.error}`);
         }
       } catch (err) {
         log(`[ERROR] ${err.message}`);
       }
     }
 
-    async function validatePaths() {
-      const paths = {
-        input_dir: document.getElementById('input_dir').value,
-        gene_bed: document.getElementById('gene_bed').value
-      };
-      log('Validating paths on disk...');
+    async function peekDirectory() {
+      const peekBox = document.getElementById('peek_box');
+      peekBox.style.display = 'block';
+      peekBox.textContent = 'Inspecting input directory (ls -lh) and reference paths...';
 
-      for (const [key, val] of Object.entries(paths)) {
-        if (!val) continue;
-        const res = await fetch('/api/validate-paths', {
+      const payload = {
+        input_dir: document.getElementById('input_dir').value,
+        gene_bed: document.getElementById('gene_bed').value,
+        output_dir: document.getElementById('output_dir').value
+      };
+
+      try {
+        const res = await fetch('/api/peek-path', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: val })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
-        const statusEl = document.getElementById(`status_${key}`);
-        if (statusEl) {
-          if (data.exists) {
-            statusEl.textContent = '✓ Path exists';
-            statusEl.className = 'path-status status-ok';
+        
+        let out = '';
+        if (data.peek.input_dir) {
+          if (data.peek.input_dir.exists) {
+            out += `✓ Input Directory exists: ${payload.input_dir}\n`;
+            if (data.peek.input_dir.matching_files && data.peek.input_dir.matching_files.length > 0) {
+              out += `Found ${data.peek.input_dir.matching_files.length} Epi2ME input callsets:\n`;
+              data.peek.input_dir.matching_files.forEach(f => out += `   - ${f}\n`);
+            } else {
+              out += `⚠ Warning: No matching *.wf_*.vcf.gz or *.bedmethyl.gz files found in input directory yet.\n`;
+            }
+            out += `\n--- Directory Contents (ls -lh) ---\n${data.peek.input_dir.ls_output || '(empty)'}\n`;
           } else {
-            statusEl.textContent = '✗ Path not found';
-            statusEl.className = 'path-status status-fail';
+            out += `✗ Input Directory NOT FOUND: ${payload.input_dir}\n`;
           }
         }
+        if (data.peek.gene_bed) {
+          out += data.peek.gene_bed.exists ? `✓ Gene BED exists: ${payload.gene_bed}\n` : `✗ Gene BED NOT FOUND: ${payload.gene_bed}\n`;
+        }
+        peekBox.textContent = out;
+      } catch (err) {
+        peekBox.textContent = `Error inspecting paths: ${err.message}`;
       }
     }
 
     async function checkDependencies() {
+      const selected = getSelectedPipelines();
+      if (selected.length === 0) {
+        log('[WARNING] Please select at least one pipeline!');
+        return;
+      }
       clearLog();
-      log(`Checking dependencies for pipeline: ${currentPipeline}...`);
+      log(`Checking dependencies for: ${selected.join(', ')}...`);
       try {
         const res = await fetch('/api/check-deps', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pipeline: currentPipeline })
+          body: JSON.stringify({ pipelines: selected })
         });
         const data = await res.json();
         log(data.output);
@@ -379,14 +433,20 @@
       }
     }
 
-    async function runPipeline() {
+    async function runSuite() {
+      const selected = getSelectedPipelines();
+      if (selected.length === 0) {
+        log('[WARNING] Please select at least one pipeline to run!');
+        return;
+      }
       clearLog();
-      log(`Launching pipeline 04_run_all.sh for ${currentPipeline}...`);
+      log(`Saving config and executing pipeline suite for: ${selected.join(', ')}...`);
+      await saveGlobalConfig();
       try {
-        const res = await fetch('/api/run-pipeline', {
+        const res = await fetch('/api/run-suite', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pipeline: currentPipeline })
+          body: JSON.stringify({ pipelines: selected })
         });
         const data = await res.json();
         log(data.output);
@@ -395,7 +455,6 @@
       }
     }
 
-    // Initial load
     loadConfig();
   </script>
 </body>

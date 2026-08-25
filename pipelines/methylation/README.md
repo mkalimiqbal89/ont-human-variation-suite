@@ -1,6 +1,6 @@
 # ONT Epi2ME Methylation Pipeline
 
-**Status: Feature-complete (in validation)**
+**Status: Released `v1.0.0`**
 
 A reproducible, config-driven pipeline for genome-wide CpG methylation analysis from Oxford Nanopore long-read data processed by Epi2ME [`wf-human-variation`](https://github.com/epi2me-labs/wf-human-variation).
 
