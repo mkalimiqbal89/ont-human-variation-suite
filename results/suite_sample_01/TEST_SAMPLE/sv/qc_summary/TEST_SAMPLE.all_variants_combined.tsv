@@ -1,0 +1,10 @@
+CHROM	POS	ID	QUAL	FILTER	SVTYPE	SVLEN	END	CHR2	SUPPORT	STRAND	VAF	GT	GENE_SYMBOL	ANNOTATION_IMPACT	category
+chr1	1000	test.DEL.1	50	PASS	DEL	-500	1500	.	10	+-	0.5	0/1	NA	NA	deletions
+chr2	2000	test.DEL.2	60	PASS	DEL	-1200	3200	.	15	+-	0.9	1/1	NA	NA	deletions
+chr1	5000	test.INS.1	40	PASS	INS	150	5000	.	8	+-	0.45	0/1	NA	NA	insertions
+chr3	8000	test.DUP.1	55	PASS	DUP	3000	11000	.	12	+-	0.55	0/1	NA	NA	duplications
+chr4	9000	test.INV.1	45	PASS	INV	2000	11000	.	9	+-	0.48	0/1	NA	NA	inversions
+chr1	19061548	test.BND.fusion1	60	PASS	BND	.	.	chr15	7	.	0.318	0/1	LOC105376714	HIGH	translocations
+chr1	45295515	test.BND.fusion2	60	PASS	BND	.	.	chr20	8	.	0.286	0/1	NA	LOW	translocations
+chr1	73129297	test.BND.fusion3	60	PASS	BND	.	.	chr10	5	.	0.238	0/1	LINC00707&LOC105378800	HIGH	translocations
+chr1	73130182	test.BND.fusion4	60	PASS	BND	.	.	chr10	6	.	0.353	0/1	LINC00707&LOC105378800	HIGH	translocations

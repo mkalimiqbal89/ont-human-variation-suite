@@ -22,8 +22,12 @@ import traceback
 import argparse
 import webbrowser
 import subprocess
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
+from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+
+CURRENT_PROCESS = None
+CURRENT_PROCESS_LOCK = threading.Lock()
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.dirname(SCRIPT_DIR)
@@ -78,8 +82,9 @@ def check_tool(name):
     path = shutil.which(name)
     return {"installed": path is not None, "path": path or ""}
 
-class ReusableHTTPServer(HTTPServer):
+class ReusableHTTPServer(ThreadingHTTPServer):
     allow_reuse_address = True
+    daemon_threads = True
 
 class SuiteUIHandler(BaseHTTPRequestHandler):
 
@@ -174,6 +179,7 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "error": str(e)}, 500)
 
     def do_POST(self):
+        global CURRENT_PROCESS
         try:
             parsed = urlparse(self.path)
             length_hdr = self.headers.get("Content-Length")
@@ -201,7 +207,7 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
                     except Exception as e:
                         sys.stderr.write(f"osascript error: {e}\n")
 
-                if not selected_path:
+                if not selected_path and threading.current_thread() is threading.main_thread():
                     try:
                         import tkinter as tk
                         from tkinter import filedialog
@@ -476,6 +482,22 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
                     outputs.append(f"=== Dependency Check [{pipe.upper()}] ===\n{res.stdout}")
                 self._send_json({"ok": True, "output": "\n\n".join(outputs)})
 
+            elif parsed.path == "/api/stop-suite":
+                stopped = False
+                with CURRENT_PROCESS_LOCK:
+                    if CURRENT_PROCESS and CURRENT_PROCESS.poll() is None:
+                        try:
+                            CURRENT_PROCESS.terminate()
+                            try:
+                                CURRENT_PROCESS.wait(timeout=3)
+                            except subprocess.TimeoutExpired:
+                                CURRENT_PROCESS.kill()
+                            stopped = True
+                        except Exception as e:
+                            sys.stderr.write(f"Error stopping process: {e}\n")
+                        CURRENT_PROCESS = None
+                self._send_json({"ok": True, "stopped": stopped})
+
             elif parsed.path == "/api/run-suite-stream":
                 selected_pipelines = payload.get("pipelines", ["sv"])
                 
@@ -486,46 +508,63 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
                 self.send_header("Connection", "keep-alive")
                 self.end_headers()
 
-                def send_event(event_type, msg):
+                def send_event(event_type, msg, **kwargs):
                     try:
-                        data = json.dumps({"type": event_type, "message": msg})
+                        data_dict = {"type": event_type, "message": msg}
+                        data_dict.update(kwargs)
+                        data = json.dumps(data_dict)
                         self.wfile.write(f"data: {data}\n\n".encode("utf-8"))
                         self.wfile.flush()
                     except Exception:
                         pass
 
-                send_event("start", f"Starting suite execution for: {', '.join(selected_pipelines)}")
+                send_event("start", f"Starting suite execution for: {', '.join(selected_pipelines)}", pipelines=selected_pipelines)
 
-                for pipe in selected_pipelines:
+                total_pipes = len(selected_pipelines)
+                for p_idx, pipe in enumerate(selected_pipelines):
                     pipe_dir = os.path.join(REPO_DIR, "pipelines", pipe)
                     script = os.path.join(pipe_dir, "scripts", "bash", "04_run_all.sh")
                     cfg = os.path.join(pipe_dir, "config", "pipeline_config.yaml")
 
                     if not os.path.exists(cfg):
-                        send_event("error", f"❌ [{pipe.upper()}] Config not found: {cfg}. Save config first.")
+                        send_event("error", f"❌ [{pipe.upper()}] Config not found: {cfg}. Save config first.", pipeline=pipe)
                         continue
 
-                    send_event("pipeline_start", f"\n====================================================\n▶ LAUNCHING PIPELINE: {pipe.upper()}\n====================================================")
+                    send_event("pipeline_start", f"\n====================================================\n▶ LAUNCHING PIPELINE: {pipe.upper()}\n====================================================", pipeline=pipe, pipe_index=p_idx, total_pipelines=total_pipes)
                     
                     cmd = ["bash", script, cfg]
                     proc = subprocess.Popen(cmd, cwd=pipe_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
 
+                    with CURRENT_PROCESS_LOCK:
+                        CURRENT_PROCESS = proc
+
                     for line in iter(proc.stdout.readline, ""):
                         if not line:
                             break
-                        send_event("log", line.rstrip())
+                        line_str = line.rstrip()
+
+                        stage_match = re.search(r'>>> Stage (\w+):\s*(.*)', line_str)
+                        if stage_match:
+                            stage_id = stage_match.group(1)
+                            stage_desc = stage_match.group(2)
+                            send_event("stage_start", line_str, pipeline=pipe, stage_id=stage_id, stage_desc=stage_desc, pipe_index=p_idx, total_pipelines=total_pipes)
+                        else:
+                            send_event("log", line_str, pipeline=pipe)
 
                     proc.stdout.close()
                     rc = proc.wait()
 
+                    with CURRENT_PROCESS_LOCK:
+                        CURRENT_PROCESS = None
+
                     if rc != 0:
-                        send_event("pipeline_error", f"❌ [{pipe.upper()}] Pipeline failed with exit code {rc}. Aborting suite run.")
-                        send_event("end", f"Suite execution failed at pipeline: {pipe}")
+                        send_event("pipeline_error", f"❌ [{pipe.upper()}] Pipeline failed with exit code {rc}. Aborting suite run.", pipeline=pipe, rc=rc)
+                        send_event("end", f"Suite execution failed at pipeline: {pipe}", success=False)
                         return
 
-                    send_event("pipeline_complete", f"✓ [{pipe.upper()}] Pipeline completed successfully.")
+                    send_event("pipeline_complete", f"✓ [{pipe.upper()}] Pipeline completed successfully.", pipeline=pipe, pipe_index=p_idx, total_pipelines=total_pipes)
 
-                send_event("end", "✓ Full pipeline suite completed successfully!")
+                send_event("end", "✓ Full pipeline suite completed successfully!", success=True)
                 return
 
             elif parsed.path == "/api/run-suite":

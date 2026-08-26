@@ -1,0 +1,10 @@
+category	svtypes_included	n_variants
+deletions	DEL	2
+insertions	INS	1
+duplications	DUP	1
+inversions	INV	1
+translocations	BND TRA	4
+complex_rearrangements	CPX BND_CLUSTER	0
+gene_fusion_candidates	BND (unpaired, pre-R-pairing)	3
+gene_fusions_confirmed	SnpEff-classified fusion	3
+gene_disruptions	SnpEff-classified ablation	1

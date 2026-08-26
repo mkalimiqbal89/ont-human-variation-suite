@@ -1,0 +1,2 @@
+ID	CHROM	POS	QUAL	FILTER	SVTYPE	SVLEN	END	CHR2	SUPPORT	STRAND	VAF	GT	DR	DV	GENE_SYMBOL	ANNOTATION_IMPACT	candidate_fusion	fusion_type	geneA	geneB	gene_pair_key	possible_duplicate_event
+test.BND.fusion1	chr1	19061548	60	PASS	BND	.	.	chr15	7	.	0.318	0/1	15	7	LOC105376714	HIGH	TRUE	gene_disruption	LOC105376714	NA	NA	FALSE

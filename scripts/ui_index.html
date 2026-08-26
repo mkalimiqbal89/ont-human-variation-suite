@@ -3,40 +3,117 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ONT Human Variation Suite — Global Control Center</title>
+  <title>ONT Human Variation Suite — Production Control Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    /* Default Auto / Fallback Variables */
     :root {
-      --bg-dark: #090d16;
-      --bg-gradient: radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
-                     radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.06) 0%, transparent 45%);
-      --panel-bg: rgba(18, 26, 43, 0.75);
-      --panel-border: rgba(255, 255, 255, 0.08);
-      --accent: #38bdf8;
-      --accent-hover: #0284c7;
-      --purple: #c084fc;
-      --success: #22c55e;
-      --success-glow: rgba(34, 197, 94, 0.2);
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
       --font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       --mono: 'JetBrains Mono', "SFMono-Regular", Consolas, monospace;
+      --bg-body: #f8fafc;
+      --panel-bg: #ffffff;
+      --panel-border: #e2e8f0;
+      --panel-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+      --accent: #4f46e5;
+      --accent-hover: #4338ca;
+      --accent-soft: rgba(79, 70, 229, 0.08);
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --input-bg: #ffffff;
+      --input-border: #cbd5e1;
+      --input-path-bg: #f1f5f9;
+      --input-path-text: #0f172a;
+      --badge-found-bg: #ecfdf5;  --badge-found-text: #047857; --badge-found-border: #a7f3d0;
+      --badge-missing-bg: #fef2f2;--badge-missing-text: #b91c1c;--badge-missing-border: #fecaca;
+      --badge-idle-bg: #f1f5f9;   --badge-idle-text: #475569;   --badge-idle-border: #cbd5e1;
+      --console-bg: #090d16;
+      --console-text: #38bdf8;
+      --progress-bg: #e2e8f0;
+      --progress-fill: linear-gradient(90deg, #4f46e5 0%, #0891b2 50%, #059669 100%);
+    }
+
+    [data-theme="light"] {
+      --bg-body: #f8fafc;
+      --panel-bg: #ffffff;
+      --panel-border: #e2e8f0;
+      --panel-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+      --accent: #4f46e5;
+      --accent-hover: #4338ca;
+      --accent-soft: rgba(79, 70, 229, 0.08);
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --input-bg: #ffffff;
+      --input-border: #cbd5e1;
+      --input-path-bg: #f1f5f9;
+      --input-path-text: #0f172a;
+      --badge-found-bg: #ecfdf5;  --badge-found-text: #047857; --badge-found-border: #a7f3d0;
+      --badge-missing-bg: #fef2f2;--badge-missing-text: #b91c1c;--badge-missing-border: #fecaca;
+      --badge-idle-bg: #f1f5f9;   --badge-idle-text: #475569;   --badge-idle-border: #cbd5e1;
+      --console-bg: #090d16;
+      --console-text: #38bdf8;
+      --progress-bg: #e2e8f0;
+      --progress-fill: linear-gradient(90deg, #4f46e5 0%, #0891b2 50%, #059669 100%);
+    }
+
+    [data-theme="dark"] {
+      --bg-body: #0f172a;
+      --panel-bg: #1e293b;
+      --panel-border: #334155;
+      --panel-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      --accent: #818cf8;
+      --accent-hover: #6366f1;
+      --accent-soft: rgba(99, 102, 241, 0.15);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --input-bg: #090d16;
+      --input-border: #334155;
+      --input-path-bg: rgba(56, 189, 248, 0.08);
+      --input-path-text: #7dd3fc;
+      --badge-found-bg: rgba(16, 185, 129, 0.15); --badge-found-text: #34d399; --badge-found-border: rgba(16, 185, 129, 0.3);
+      --badge-missing-bg: rgba(244, 63, 94, 0.15); --badge-missing-text: #fb7185; --badge-missing-border: rgba(244, 63, 94, 0.3);
+      --badge-idle-bg: rgba(148, 163, 184, 0.1); --badge-idle-text: #94a3b8; --badge-idle-border: rgba(148, 163, 184, 0.25);
+      --console-bg: #040711;
+      --console-text: #38bdf8;
+      --progress-bg: #090d16;
+      --progress-fill: linear-gradient(90deg, #6366f1 0%, #06b6d4 50%, #10b981 100%);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme]) {
+        --bg-body: #0f172a;
+        --panel-bg: #1e293b;
+        --panel-border: #334155;
+        --panel-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        --accent: #818cf8;
+        --accent-hover: #6366f1;
+        --accent-soft: rgba(99, 102, 241, 0.15);
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --input-bg: #090d16;
+        --input-border: #334155;
+        --input-path-bg: rgba(56, 189, 248, 0.08);
+        --input-path-text: #7dd3fc;
+        --badge-found-bg: rgba(16, 185, 129, 0.15); --badge-found-text: #34d399; --badge-found-border: rgba(16, 185, 129, 0.3);
+        --badge-missing-bg: rgba(244, 63, 94, 0.15); --badge-missing-text: #fb7185; --badge-missing-border: rgba(244, 63, 94, 0.3);
+        --badge-idle-bg: rgba(148, 163, 184, 0.1); --badge-idle-text: #94a3b8; --badge-idle-border: rgba(148, 163, 184, 0.25);
+        --console-bg: #040711;
+        --console-text: #38bdf8;
+        --progress-bg: #090d16;
+        --progress-fill: linear-gradient(90deg, #6366f1 0%, #06b6d4 50%, #10b981 100%);
+      }
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: var(--font);
-      background-color: var(--bg-dark);
-      background-image: var(--bg-gradient);
-      background-attachment: fixed;
+      background-color: var(--bg-body);
       color: var(--text-main);
       line-height: 1.5;
       padding: 24px;
       min-height: 100vh;
+      transition: background-color 0.25s ease, color 0.25s ease;
     }
 
     header {
@@ -48,17 +125,28 @@
       border-bottom: 1px solid var(--panel-border);
     }
     .header-title h1 {
-      font-size: 1.65rem;
+      font-size: 1.45rem;
       font-weight: 700;
-      background: linear-gradient(135deg, #38bdf8 0%, #c084fc 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: var(--text-main);
       display: flex;
       align-items: center;
       gap: 10px;
+      letter-spacing: -0.02em;
     }
-    .header-title p { font-size: 0.88rem; color: var(--text-muted); margin-top: 2px; }
+    .header-title h1 .version-tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    .header-title p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
 
     .header-actions {
       display: flex;
@@ -66,14 +154,46 @@
       gap: 12px;
     }
 
+    /* Segmented Theme Switcher */
+    .theme-switcher {
+      display: flex;
+      background: var(--input-path-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .theme-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .theme-btn:hover {
+      color: var(--text-main);
+    }
+    .theme-btn.active {
+      background: var(--panel-bg);
+      color: var(--accent);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
     #connection-status {
       font-size: 0.82rem;
       font-weight: 600;
       padding: 6px 12px;
       border-radius: 20px;
-      background: rgba(245, 158, 11, 0.1);
-      border: 1px solid rgba(245, 158, 11, 0.25);
-      color: var(--warning);
+      background: var(--badge-idle-bg);
+      border: 1px solid var(--badge-idle-border);
+      color: var(--badge-idle-text);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -87,26 +207,25 @@
 
     .card {
       background: var(--panel-bg);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--panel-border);
-      border-radius: 14px;
+      border-radius: 12px;
       padding: 22px;
       margin-bottom: 20px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-      transition: border-color 0.3s;
-    }
-    .card:hover {
-      border-color: rgba(56, 189, 248, 0.2);
+      box-shadow: var(--panel-shadow);
+      transition: border-color 0.2s, background-color 0.25s ease;
     }
     .card h2 {
-      font-size: 1.08rem;
+      font-size: 1.05rem;
       font-weight: 600;
       margin-bottom: 18px;
-      color: var(--accent);
+      color: var(--text-main);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      letter-spacing: -0.01em;
+    }
+    .card h2 .icon {
+      color: var(--accent);
     }
 
     .form-group {
@@ -122,26 +241,26 @@
     }
 
     input.input-path {
-      background: rgba(56, 189, 248, 0.06) !important;
-      border: 1px solid rgba(56, 189, 248, 0.25) !important;
-      color: #7dd3fc !important;
+      background: var(--input-path-bg) !important;
+      border: 1px solid var(--input-border) !important;
+      color: var(--input-path-text) !important;
       font-family: var(--mono) !important;
       font-size: 0.85rem !important;
     }
     input.input-path:focus {
-      border-color: #38bdf8 !important;
-      box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 3px var(--accent-soft);
       outline: none;
     }
 
     input.input-text, select {
-      background: rgba(9, 13, 22, 0.8) !important;
-      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      background: var(--input-bg) !important;
+      border: 1px solid var(--input-border) !important;
       color: var(--text-main) !important;
     }
     input.input-text:focus {
-      border-color: var(--purple) !important;
-      box-shadow: 0 0 12px rgba(192, 132, 252, 0.25);
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 3px var(--accent-soft);
       outline: none;
     }
 
@@ -170,10 +289,10 @@
       margin-bottom: 16px;
     }
     .pipeline-checkbox-card {
-      background: rgba(9, 13, 22, 0.6);
+      background: var(--input-path-bg);
       border: 1px solid var(--panel-border);
       padding: 12px 14px;
-      border-radius: 10px;
+      border-radius: 8px;
       cursor: pointer;
       font-weight: 500;
       font-size: 0.88rem;
@@ -185,7 +304,6 @@
     }
     .pipeline-checkbox-card:hover {
       border-color: var(--accent);
-      background: rgba(56, 189, 248, 0.04);
     }
     .pipeline-header-row {
       display: flex;
@@ -193,17 +311,18 @@
       gap: 8px;
     }
     .pipeline-checkbox-card input { width: auto; cursor: pointer; }
+
     .pipeline-badge {
       font-size: 0.72rem;
       font-family: var(--mono);
-      padding: 2px 6px;
+      padding: 3px 8px;
       border-radius: 4px;
       width: fit-content;
       font-weight: 500;
     }
-    .badge-found { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
-    .badge-missing { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-    .badge-idle { background: rgba(148, 163, 184, 0.1); color: var(--text-muted); border: 1px solid rgba(148, 163, 184, 0.2); }
+    .badge-found { background: var(--badge-found-bg); color: var(--badge-found-text); border: 1px solid var(--badge-found-border); }
+    .badge-missing { background: var(--badge-missing-bg); color: var(--badge-missing-text); border: 1px solid var(--badge-missing-border); }
+    .badge-idle { background: var(--badge-idle-bg); color: var(--badge-idle-text); border: 1px solid var(--badge-idle-border); }
 
     .actions {
       display: flex;
@@ -229,35 +348,37 @@
       white-space: nowrap;
     }
     .btn-primary {
-      background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
-      color: #0f172a;
-      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);
+      background: var(--accent);
+      color: #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
     .btn-primary:hover {
+      background: var(--accent-hover);
       transform: translateY(-1px);
-      box-shadow: 0 6px 18px rgba(56, 189, 248, 0.45);
     }
     .btn-success {
-      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-      color: #0f172a;
-      box-shadow: 0 4px 14px var(--success-glow);
+      background: #059669;
+      color: #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
     .btn-success:hover {
+      background: #047857;
       transform: translateY(-1px);
-      box-shadow: 0 6px 18px rgba(34, 197, 94, 0.4);
     }
     .btn-purple {
-      background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%);
-      color: #0f172a;
+      background: #7c3aed;
+      color: #ffffff;
+    }
+    .btn-purple:hover {
+      background: #6d28d9;
     }
     .btn-secondary {
-      background: rgba(255, 255, 255, 0.07);
+      background: var(--input-path-bg);
       color: var(--text-main);
       border: 1px solid var(--panel-border);
     }
     .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.13);
-      border-color: rgba(255, 255, 255, 0.2);
+      border-color: var(--accent);
     }
 
     /* Validation Status Grid */
@@ -268,7 +389,7 @@
       margin-top: 14px;
     }
     .val-item {
-      background: rgba(9, 13, 22, 0.6);
+      background: var(--input-path-bg);
       border: 1px solid var(--panel-border);
       border-radius: 8px;
       padding: 10px 12px;
@@ -295,48 +416,63 @@
     }
 
     /* Progress bar */
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
     .progress-container {
       width: 100%;
-      background: rgba(9, 13, 22, 0.8);
+      background: var(--progress-bg);
       border-radius: 8px;
-      height: 8px;
+      height: 12px;
       overflow: hidden;
       margin-bottom: 12px;
       border: 1px solid var(--panel-border);
+      position: relative;
     }
     .progress-bar {
       height: 100%;
       width: 0%;
-      background: linear-gradient(90deg, #38bdf8 0%, #22c55e 100%);
-      transition: width 0.3s ease;
+      background: var(--progress-fill);
+      transition: width 0.4s ease-in-out, background 0.3s;
+    }
+    .progress-bar.error-state {
+      background: linear-gradient(90deg, #ef4444 0%, #b91c1c 100%) !important;
+    }
+    .progress-bar.stalled-state {
+      background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%) !important;
     }
 
     .console-card {
       grid-column: span 2;
     }
     #console {
-      background: #040711;
+      background: var(--console-bg);
       border: 1px solid var(--panel-border);
       border-radius: 10px;
       padding: 16px;
       font-family: var(--mono);
       font-size: 0.84rem;
-      color: #38bdf8;
+      color: var(--console-text);
       height: 320px;
       overflow-y: auto;
       white-space: pre-wrap;
-      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
       line-height: 1.6;
     }
 
     .peek-box {
-      background: #040711;
+      background: var(--console-bg);
       border: 1px solid var(--panel-border);
       border-radius: 10px;
       padding: 14px;
       font-family: var(--mono);
       font-size: 0.8rem;
-      color: #4ade80;
+      color: #34d399;
       max-height: 200px;
       overflow-y: auto;
       white-space: pre-wrap;
@@ -355,10 +491,17 @@
 
   <header>
     <div class="header-title">
-      <h1>🧬 ONT Human Variation Suite</h1>
-      <p>Unified Control Dashboard — Configure, Validate & Run Pipeline Workflows</p>
+      <h1>🧬 ONT Human Variation Suite <span class="version-tag">v1.2.0 • Enterprise</span></h1>
+      <p>Production-Grade Control Center — Oxford Nanopore Human Genomics Pipelines</p>
     </div>
     <div class="header-actions">
+      <!-- Theme Switcher Segmented Control -->
+      <div class="theme-switcher">
+        <button id="theme_btn_light" class="theme-btn" onclick="setTheme('light')">☀️ Light</button>
+        <button id="theme_btn_dark" class="theme-btn" onclick="setTheme('dark')">🌙 Dark</button>
+        <button id="theme_btn_auto" class="theme-btn active" onclick="setTheme('auto')">💻 Auto</button>
+      </div>
+
       <button class="btn btn-purple btn-sm" onclick="loadTestFixtures()">⚡ Load Test Fixtures</button>
       <div id="connection-status">● Connecting...</div>
     </div>
@@ -367,7 +510,7 @@
   <div class="grid">
     <!-- Card 1: Sample & Global Paths -->
     <div class="card">
-      <h2>📁 1. Global Sample & Path Settings</h2>
+      <h2><span>📁 1. Global Sample & Path Configuration</span></h2>
       
       <div class="form-group">
         <label>Analysis Run Name / Description</label>
@@ -422,7 +565,7 @@
     <!-- Card 2: Pipeline Selector, References & Path Validation -->
     <div class="card">
       <h2>
-        <span>🧬 2. Pipeline Selection & Validation</span>
+        <span>🧬 2. Pipeline Selection & Reference Bundle</span>
         <button class="btn btn-secondary btn-sm" onclick="validateAllPaths()">🔍 Validate Paths & Tools</button>
       </h2>
 
@@ -532,8 +675,16 @@
     <div class="card console-card">
       <h2>
         <span>🖥️ 3. Real-Time Suite Execution Console</span>
-        <span id="run_status_badge" class="pipeline-badge badge-idle">Status: Idle</span>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span id="heartbeat_badge" class="pipeline-badge badge-idle" style="display:none; font-weight:500;">● Active</span>
+          <span id="run_status_badge" class="pipeline-badge badge-idle">Status: Idle</span>
+        </div>
       </h2>
+
+      <div class="progress-header">
+        <span id="progress_stage_label" style="color: var(--text-muted);">Ready to configure and run</span>
+        <span id="progress_percent_label" style="color: var(--accent); font-family: var(--mono); font-size: 0.9rem;">0%</span>
+      </div>
 
       <div class="progress-container">
         <div id="progress_bar" class="progress-bar"></div>
@@ -542,6 +693,7 @@
       <div class="actions" style="margin-bottom: 14px; margin-top: 0;">
         <button class="btn btn-secondary btn-sm" onclick="checkDependencies()">Check Dependencies Script</button>
         <button class="btn btn-success" onclick="runSuiteStream()">🚀 Run Selected Pipelines (Live Output)</button>
+        <button class="btn btn-secondary btn-sm" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" onclick="stopSuiteExecution()">🛑 Stop Execution</button>
         <button class="btn btn-secondary btn-sm" onclick="clearLog()">Clear Terminal</button>
       </div>
 
@@ -551,6 +703,37 @@
 
   <script>
     const API_BASE = (window.location.protocol === 'file:') ? 'http://localhost:5005' : window.location.origin;
+
+    // Theme Switcher Logic
+    function setTheme(theme) {
+      const btnLight = document.getElementById('theme_btn_light');
+      const btnDark = document.getElementById('theme_btn_dark');
+      const btnAuto = document.getElementById('theme_btn_auto');
+
+      [btnLight, btnDark, btnAuto].forEach(b => b.classList.remove('active'));
+
+      if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        btnLight.classList.add('active');
+        localStorage.setItem('ont_ui_theme', 'light');
+      } else if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        btnDark.classList.add('active');
+        localStorage.setItem('ont_ui_theme', 'dark');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        btnAuto.classList.add('active');
+        localStorage.removeItem('ont_ui_theme');
+      }
+    }
+
+    // Initialize saved theme
+    const savedTheme = localStorage.getItem('ont_ui_theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      setTheme(savedTheme);
+    } else {
+      setTheme('auto');
+    }
 
     function log(msg, append = true) {
       const el = document.getElementById('console');
@@ -616,9 +799,9 @@
         const data = await res.json();
         if (data.ok) {
           statusEl.textContent = `● Connected (${window.location.origin || 'localhost:5005'})`;
-          statusEl.style.color = 'var(--success)';
-          statusEl.style.borderColor = 'rgba(34, 197, 94, 0.3)';
-          statusEl.style.background = 'rgba(34, 197, 94, 0.1)';
+          statusEl.style.color = 'var(--badge-found-text)';
+          statusEl.style.borderColor = 'var(--badge-found-border)';
+          statusEl.style.background = 'var(--badge-found-bg)';
 
           if (data.config) {
             if (data.config.sample_id) document.getElementById('sample_id').value = data.config.sample_id;
@@ -636,7 +819,9 @@
         }
       } catch (err) {
         statusEl.textContent = `● Server Offline — Run: python3 scripts/launch_ui.py`;
-        statusEl.style.color = 'var(--danger)';
+        statusEl.style.color = 'var(--badge-missing-text)';
+        statusEl.style.borderColor = 'var(--badge-missing-border)';
+        statusEl.style.background = 'var(--badge-missing-bg)';
         log(`[CRITICAL] Cannot connect to server at http://localhost:5005.`);
       }
     }
@@ -688,13 +873,13 @@
         const inputStatusEl = document.getElementById('val_input_status');
         const inputPathEl = document.getElementById('val_input_path');
         if (v.input_dir.exists) {
-          inputStatusEl.innerHTML = '<span style="color:var(--success)">✓ Valid</span>';
+          inputStatusEl.innerHTML = '<span style="color:var(--badge-found-text)">✓ Valid</span>';
           inputPathEl.textContent = `${v.input_dir.path} (Prefix: "${v.input_dir.detected_prefix || 'manual'}")`;
           if (v.input_dir.detected_prefix) {
             document.getElementById('raw_sample_prefix').value = v.input_dir.detected_prefix;
           }
         } else {
-          inputStatusEl.innerHTML = '<span style="color:var(--danger)">✗ Not Found</span>';
+          inputStatusEl.innerHTML = '<span style="color:var(--badge-missing-text)">✗ Not Found</span>';
           inputPathEl.textContent = v.input_dir.path || 'Path empty';
         }
 
@@ -702,10 +887,10 @@
         const bedStatusEl = document.getElementById('val_bed_status');
         const bedPathEl = document.getElementById('val_bed_path');
         if (v.gene_bed.exists) {
-          bedStatusEl.innerHTML = '<span style="color:var(--success)">✓ Valid</span>';
+          bedStatusEl.innerHTML = '<span style="color:var(--badge-found-text)">✓ Valid</span>';
           bedPathEl.textContent = v.gene_bed.path;
         } else {
-          bedStatusEl.innerHTML = '<span style="color:var(--danger)">✗ Missing</span>';
+          bedStatusEl.innerHTML = '<span style="color:var(--badge-missing-text)">✗ Missing</span>';
           bedPathEl.textContent = v.gene_bed.path || 'Path empty';
         }
 
@@ -713,10 +898,10 @@
         const outStatusEl = document.getElementById('val_out_status');
         const outDetailsEl = document.getElementById('val_out_details');
         if (v.output_dir.writable && v.work_dir.writable) {
-          outStatusEl.innerHTML = '<span style="color:var(--success)">✓ Writable</span>';
+          outStatusEl.innerHTML = '<span style="color:var(--badge-found-text)">✓ Writable</span>';
           outDetailsEl.textContent = `Output & work directories ready`;
         } else {
-          outStatusEl.innerHTML = '<span style="color:var(--warning)">⚠ Check Permission</span>';
+          outStatusEl.innerHTML = '<span style="color:var(--badge-missing-text)">⚠ Check Permission</span>';
           outDetailsEl.textContent = `Verify write access`;
         }
 
@@ -734,7 +919,7 @@
           }
         }
         toolPillsEl.innerHTML = toolHtml;
-        toolStatusEl.innerHTML = allToolsOk ? '<span style="color:var(--success)">✓ Complete</span>' : '<span style="color:var(--danger)">✗ Tools Missing</span>';
+        toolStatusEl.innerHTML = allToolsOk ? '<span style="color:var(--badge-found-text)">✓ Complete</span>' : '<span style="color:var(--badge-missing-text)">✗ Tools Missing</span>';
 
         // Callset Badges per pipeline
         ['sv', 'methylation', 'cnv', 'snv'].forEach(p => {
@@ -867,6 +1052,54 @@
       }
     }
 
+    let heartbeatTimer = null;
+    let lastLogTimestamp = Date.now();
+
+    function updateProgressUI(pct, stageLabel = '', state = 'normal') {
+      const progressBar = document.getElementById('progress_bar');
+      const percentLabel = document.getElementById('progress_percent_label');
+      const stageTextLabel = document.getElementById('progress_stage_label');
+
+      const cleanPct = Math.min(100, Math.max(0, Math.round(pct)));
+      progressBar.style.width = `${cleanPct}%`;
+      percentLabel.textContent = `${cleanPct}%`;
+
+      if (stageLabel) {
+        stageTextLabel.textContent = stageLabel;
+      }
+
+      progressBar.classList.remove('error-state', 'stalled-state');
+      if (state === 'error') {
+        progressBar.classList.add('error-state');
+      } else if (state === 'stalled') {
+        progressBar.classList.add('stalled-state');
+      }
+    }
+
+    async function stopSuiteExecution() {
+      log('\n[STOP SIGNAL] Requesting server to cancel running pipeline suite...');
+      try {
+        const res = await fetch(`${API_BASE}/api/stop-suite`, { method: 'POST' });
+        const data = await res.json();
+        if (data.ok && data.stopped) {
+          log('🛑 [STOPPED] Pipeline process terminated by user command.');
+          const statusBadge = document.getElementById('run_status_badge');
+          const heartbeatBadge = document.getElementById('heartbeat_badge');
+          
+          statusBadge.className = 'pipeline-badge badge-missing';
+          statusBadge.textContent = 'Status: Stopped by User';
+          if (heartbeatBadge) heartbeatBadge.style.display = 'none';
+
+          if (heartbeatTimer) clearInterval(heartbeatTimer);
+          updateProgressUI(0, 'Suite execution stopped', 'error');
+        } else {
+          log('[INFO] No active process was currently running.');
+        }
+      } catch (err) {
+        log(`[ERROR] Failed to send stop signal: ${err.message}`);
+      }
+    }
+
     async function runSuiteStream() {
       const selected = getSelectedPipelines();
       if (selected.length === 0) {
@@ -882,13 +1115,49 @@
       }
 
       const statusBadge = document.getElementById('run_status_badge');
-      const progressBar = document.getElementById('progress_bar');
+      const heartbeatBadge = document.getElementById('heartbeat_badge');
       
       statusBadge.className = 'pipeline-badge badge-found';
       statusBadge.textContent = 'Status: Running';
-      progressBar.style.width = '10%';
+      if (heartbeatBadge) {
+        heartbeatBadge.style.display = 'inline-block';
+        heartbeatBadge.className = 'pipeline-badge badge-found';
+        heartbeatBadge.textContent = '● Active';
+      }
 
+      updateProgressUI(5, `Initiating run for ${selected.join(', ').toUpperCase()}...`);
       log(`[LAUNCH] Initiating streaming run for selected pipelines: ${selected.join(', ')}...\n`);
+
+      lastLogTimestamp = Date.now();
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+
+      heartbeatTimer = setInterval(() => {
+        const elapsedSec = Math.floor((Date.now() - lastLogTimestamp) / 1000);
+        if (heartbeatBadge && statusBadge.textContent.includes('Running')) {
+          if (elapsedSec < 15) {
+            heartbeatBadge.className = 'pipeline-badge badge-found';
+            heartbeatBadge.textContent = `● Active (${elapsedSec}s ago)`;
+          } else if (elapsedSec < 180) {
+            heartbeatBadge.className = 'pipeline-badge badge-idle';
+            heartbeatBadge.textContent = `● Processing data... (${elapsedSec}s)`;
+          } else {
+            heartbeatBadge.className = 'pipeline-badge badge-missing';
+            heartbeatBadge.textContent = `⚠ Output paused (${elapsedSec}s)`;
+            statusBadge.className = 'pipeline-badge badge-missing';
+            statusBadge.textContent = 'Status: Stalled / Heavy Processing';
+          }
+        }
+      }, 2000);
+
+      const stageWeights = {
+        '01': 15,
+        '02': 35,
+        '03': 55,
+        '04': 65,
+        '05': 75,
+        '06': 90,
+        '07': 98
+      };
 
       try {
         const response = await fetch(`${API_BASE}/api/run-suite-stream`, {
@@ -901,11 +1170,15 @@
         const decoder = new TextDecoder('utf-8');
         let buffer = '';
 
-        let completedPipes = 0;
+        let currentPipeIndex = 0;
+        let totalPipes = selected.length;
+        let currentStageWeight = 10;
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+
+          lastLogTimestamp = Date.now();
 
           buffer += decoder.decode(value, { stream: true });
           const parts = buffer.split('\n\n');
@@ -915,29 +1188,70 @@
             if (!part.startsWith('data: ')) continue;
             try {
               const event = JSON.parse(part.substring(6));
+
               if (event.type === 'log') {
                 log(event.message);
+
+                // Dynamic detection of stage names from logs if not stage_start
+                if (event.message.includes('>>> Stage 01')) currentStageWeight = 15;
+                else if (event.message.includes('>>> Stage 02')) currentStageWeight = 35;
+                else if (event.message.includes('>>> Stage 03')) currentStageWeight = 55;
+                else if (event.message.includes('>>> Stage 05')) currentStageWeight = 75;
+                else if (event.message.includes('>>> Stage 06')) currentStageWeight = 90;
+                else if (event.message.includes('>>> Stage 07')) currentStageWeight = 98;
+
+                const overallPct = Math.min(99, Math.round(((currentPipeIndex + (currentStageWeight / 100)) / totalPipes) * 100));
+                updateProgressUI(overallPct);
+
+              } else if (event.type === 'stage_start') {
+                log(event.message);
+                const sId = event.stage_id || '01';
+                currentStageWeight = stageWeights[sId] || 20;
+                currentPipeIndex = event.pipe_index || 0;
+                totalPipes = event.total_pipelines || selected.length;
+
+                const overallPct = Math.min(99, Math.round(((currentPipeIndex + (currentStageWeight / 100)) / totalPipes) * 100));
+                const pName = (event.pipeline || selected[currentPipeIndex] || '').toUpperCase();
+                const desc = event.stage_desc || `Stage ${sId}`;
+                updateProgressUI(overallPct, `[${pName}] Stage ${sId}: ${desc}`);
+
               } else if (event.type === 'pipeline_start') {
                 log(event.message);
+                currentPipeIndex = event.pipe_index || 0;
+                totalPipes = event.total_pipelines || selected.length;
+                currentStageWeight = 5;
+                const overallPct = Math.round(((currentPipeIndex + 0.05) / totalPipes) * 100);
+                const pName = (event.pipeline || selected[currentPipeIndex] || '').toUpperCase();
+                updateProgressUI(overallPct, `Launching ${pName} Pipeline...`);
+
               } else if (event.type === 'pipeline_complete') {
                 log(event.message);
-                completedPipes++;
-                const pct = Math.min(90, Math.round((completedPipes / selected.length) * 90));
-                progressBar.style.width = `${pct}%`;
+                currentPipeIndex++;
+                const overallPct = Math.min(99, Math.round((currentPipeIndex / totalPipes) * 100));
+                updateProgressUI(overallPct, `✓ Completed pipeline ${currentPipeIndex} of ${totalPipes}`);
+
               } else if (event.type === 'end') {
                 log(`\n${event.message}`);
-                if (event.message.includes('successfully')) {
+                if (heartbeatTimer) clearInterval(heartbeatTimer);
+                if (heartbeatBadge) heartbeatBadge.style.display = 'none';
+
+                if (event.success !== false && event.message.includes('successfully')) {
                   statusBadge.className = 'pipeline-badge badge-found';
                   statusBadge.textContent = 'Status: Completed';
-                  progressBar.style.width = '100%';
+                  updateProgressUI(100, '✓ Full pipeline suite completed successfully!');
                 } else {
                   statusBadge.className = 'pipeline-badge badge-missing';
-                  statusBadge.textContent = 'Status: Failed';
+                  statusBadge.textContent = 'Status: Suite Failed';
+                  updateProgressUI(0, '❌ Suite execution failed or stopped', 'error');
                 }
+
               } else if (event.type === 'error' || event.type === 'pipeline_error') {
                 log(event.message);
+                if (heartbeatTimer) clearInterval(heartbeatTimer);
+                if (heartbeatBadge) heartbeatBadge.style.display = 'none';
                 statusBadge.className = 'pipeline-badge badge-missing';
                 statusBadge.textContent = 'Status: Error';
+                updateProgressUI(0, '❌ Execution error detected', 'error');
               }
             } catch (e) {
               console.error('SSE parse error:', e);
@@ -945,9 +1259,12 @@
           }
         }
       } catch (err) {
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        if (heartbeatBadge) heartbeatBadge.style.display = 'none';
         log(`[CRITICAL ERROR] Stream connection broken: ${err.message}`);
         statusBadge.className = 'pipeline-badge badge-missing';
         statusBadge.textContent = 'Status: Network Error';
+        updateProgressUI(0, '❌ Stream connection lost', 'error');
       }
     }
 
