@@ -415,37 +415,64 @@
       border-radius: 4px;
     }
 
-    /* Progress bar */
-    .progress-header {
+    /* Status Light & One-Word Status Pill */
+    .status-light-container {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 6px;
-      font-size: 0.82rem;
-      font-weight: 600;
-    }
-    .progress-container {
-      width: 100%;
-      background: var(--progress-bg);
-      border-radius: 8px;
-      height: 12px;
-      overflow: hidden;
-      margin-bottom: 12px;
+      gap: 7px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
       border: 1px solid var(--panel-border);
+      background: var(--input-path-bg);
+      color: var(--text-main);
+      transition: all 0.3s ease;
+    }
+    .status-light-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
       position: relative;
+      transition: all 0.3s ease;
     }
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      background: var(--progress-fill);
-      transition: width 0.4s ease-in-out, background 0.3s;
+    .status-light-dot.pulse-green {
+      background-color: #10b981;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: pulseGreen 1.8s infinite;
     }
-    .progress-bar.error-state {
-      background: linear-gradient(90deg, #ef4444 0%, #b91c1c 100%) !important;
+    @keyframes pulseGreen {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
     }
-    .progress-bar.stalled-state {
-      background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%) !important;
+    .status-light-dot.pulse-amber {
+      background-color: #f59e0b;
+      box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+      animation: pulseAmber 1.8s infinite;
     }
+    @keyframes pulseAmber {
+      0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    }
+    .status-light-dot.pulse-red {
+      background-color: #ef4444;
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+      animation: pulseRed 1.8s infinite;
+    }
+    @keyframes pulseRed {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .status-light-dot.solid-blue { background-color: #3b82f6; box-shadow: 0 0 6px rgba(59, 130, 246, 0.5); }
+    .status-light-dot.solid-gray { background-color: #64748b; }
+    .status-light-dot.solid-orange { background-color: #f97316; }
 
     .console-card {
       grid-column: span 2;
@@ -503,6 +530,10 @@
       </div>
 
       <button class="btn btn-purple btn-sm" onclick="loadTestFixtures()">⚡ Load Test Fixtures</button>
+      <div id="status_pill_header" class="status-light-container">
+        <span id="status_dot_header" class="status-light-dot solid-gray"></span>
+        <span id="status_text_header">IDLE</span>
+      </div>
       <div id="connection-status">● Connecting...</div>
     </div>
   </header>
@@ -675,9 +706,13 @@
     <div class="card console-card">
       <h2>
         <span>🖥️ 3. Real-Time Suite Execution Console</span>
-        <div style="display:flex; gap:8px; align-items:center;">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <div id="status_pill_console" class="status-light-container">
+            <span id="status_dot_console" class="status-light-dot solid-gray"></span>
+            <span id="status_text_console">IDLE</span>
+          </div>
           <span id="heartbeat_badge" class="pipeline-badge badge-idle" style="display:none; font-weight:500;">● Active</span>
-          <span id="run_status_badge" class="pipeline-badge badge-idle">Status: Idle</span>
+          <span id="run_status_badge" class="pipeline-badge badge-idle">Status: IDLE</span>
         </div>
       </h2>
 
@@ -1055,6 +1090,60 @@
     let heartbeatTimer = null;
     let lastLogTimestamp = Date.now();
 
+    function setSystemStatus(statusState, customMsg = '') {
+      const dotHeader = document.getElementById('status_dot_header');
+      const textHeader = document.getElementById('status_text_header');
+      const dotConsole = document.getElementById('status_dot_console');
+      const textConsole = document.getElementById('status_text_console');
+      const runBadge = document.getElementById('run_status_badge');
+
+      let dotClass = 'solid-gray';
+      let statusWord = 'IDLE';
+      let badgeClass = 'pipeline-badge badge-idle';
+
+      switch (statusState) {
+        case 'RUNNING':
+          dotClass = 'pulse-green';
+          statusWord = 'RUNNING';
+          badgeClass = 'pipeline-badge badge-found';
+          break;
+        case 'STALLED':
+          dotClass = 'pulse-amber';
+          statusWord = 'STALLED';
+          badgeClass = 'pipeline-badge badge-missing';
+          break;
+        case 'COMPLETED':
+          dotClass = 'solid-blue';
+          statusWord = 'COMPLETED';
+          badgeClass = 'pipeline-badge badge-found';
+          break;
+        case 'FAILED':
+          dotClass = 'pulse-red';
+          statusWord = 'FAILED';
+          badgeClass = 'pipeline-badge badge-missing';
+          break;
+        case 'STOPPED':
+          dotClass = 'solid-orange';
+          statusWord = 'STOPPED';
+          badgeClass = 'pipeline-badge badge-missing';
+          break;
+        default: // IDLE
+          dotClass = 'solid-gray';
+          statusWord = 'IDLE';
+          badgeClass = 'pipeline-badge badge-idle';
+      }
+
+      if (dotHeader) dotHeader.className = `status-light-dot ${dotClass}`;
+      if (dotConsole) dotConsole.className = `status-light-dot ${dotClass}`;
+      if (textHeader) textHeader.textContent = statusWord;
+      if (textConsole) textConsole.textContent = statusWord;
+
+      if (runBadge) {
+        runBadge.className = badgeClass;
+        runBadge.textContent = customMsg ? `Status: ${statusWord} (${customMsg})` : `Status: ${statusWord}`;
+      }
+    }
+
     function updateProgressUI(pct, stageLabel = '', state = 'normal') {
       const progressBar = document.getElementById('progress_bar');
       const percentLabel = document.getElementById('progress_percent_label');
@@ -1083,20 +1172,20 @@
         const data = await res.json();
         if (data.ok && data.stopped) {
           log('🛑 [STOPPED] Pipeline process terminated by user command.');
-          const statusBadge = document.getElementById('run_status_badge');
           const heartbeatBadge = document.getElementById('heartbeat_badge');
           
-          statusBadge.className = 'pipeline-badge badge-missing';
-          statusBadge.textContent = 'Status: Stopped by User';
+          setSystemStatus('STOPPED', 'Terminated by User');
           if (heartbeatBadge) heartbeatBadge.style.display = 'none';
 
           if (heartbeatTimer) clearInterval(heartbeatTimer);
           updateProgressUI(0, 'Suite execution stopped', 'error');
         } else {
           log('[INFO] No active process was currently running.');
+          setSystemStatus('IDLE');
         }
       } catch (err) {
         log(`[ERROR] Failed to send stop signal: ${err.message}`);
+        setSystemStatus('FAILED', 'Network Error');
       }
     }
 
@@ -1114,11 +1203,9 @@
         return;
       }
 
-      const statusBadge = document.getElementById('run_status_badge');
       const heartbeatBadge = document.getElementById('heartbeat_badge');
       
-      statusBadge.className = 'pipeline-badge badge-found';
-      statusBadge.textContent = 'Status: Running';
+      setSystemStatus('RUNNING');
       if (heartbeatBadge) {
         heartbeatBadge.style.display = 'inline-block';
         heartbeatBadge.className = 'pipeline-badge badge-found';
@@ -1133,18 +1220,19 @@
 
       heartbeatTimer = setInterval(() => {
         const elapsedSec = Math.floor((Date.now() - lastLogTimestamp) / 1000);
-        if (heartbeatBadge && statusBadge.textContent.includes('Running')) {
+        if (heartbeatBadge) {
           if (elapsedSec < 15) {
             heartbeatBadge.className = 'pipeline-badge badge-found';
             heartbeatBadge.textContent = `● Active (${elapsedSec}s ago)`;
+            setSystemStatus('RUNNING');
           } else if (elapsedSec < 180) {
             heartbeatBadge.className = 'pipeline-badge badge-idle';
             heartbeatBadge.textContent = `● Processing data... (${elapsedSec}s)`;
+            setSystemStatus('RUNNING', 'Heavy Processing');
           } else {
             heartbeatBadge.className = 'pipeline-badge badge-missing';
             heartbeatBadge.textContent = `⚠ Output paused (${elapsedSec}s)`;
-            statusBadge.className = 'pipeline-badge badge-missing';
-            statusBadge.textContent = 'Status: Stalled / Heavy Processing';
+            setSystemStatus('STALLED', `Paused ${elapsedSec}s`);
           }
         }
       }, 2000);
@@ -1236,12 +1324,10 @@
                 if (heartbeatBadge) heartbeatBadge.style.display = 'none';
 
                 if (event.success !== false && event.message.includes('successfully')) {
-                  statusBadge.className = 'pipeline-badge badge-found';
-                  statusBadge.textContent = 'Status: Completed';
+                  setSystemStatus('COMPLETED');
                   updateProgressUI(100, '✓ Full pipeline suite completed successfully!');
                 } else {
-                  statusBadge.className = 'pipeline-badge badge-missing';
-                  statusBadge.textContent = 'Status: Suite Failed';
+                  setSystemStatus('FAILED', 'Suite Failed');
                   updateProgressUI(0, '❌ Suite execution failed or stopped', 'error');
                 }
 
@@ -1249,8 +1335,7 @@
                 log(event.message);
                 if (heartbeatTimer) clearInterval(heartbeatTimer);
                 if (heartbeatBadge) heartbeatBadge.style.display = 'none';
-                statusBadge.className = 'pipeline-badge badge-missing';
-                statusBadge.textContent = 'Status: Error';
+                setSystemStatus('FAILED', 'Pipeline Error');
                 updateProgressUI(0, '❌ Execution error detected', 'error');
               }
             } catch (e) {
@@ -1262,8 +1347,7 @@
         if (heartbeatTimer) clearInterval(heartbeatTimer);
         if (heartbeatBadge) heartbeatBadge.style.display = 'none';
         log(`[CRITICAL ERROR] Stream connection broken: ${err.message}`);
-        statusBadge.className = 'pipeline-badge badge-missing';
-        statusBadge.textContent = 'Status: Network Error';
+        setSystemStatus('FAILED', 'Network Error');
         updateProgressUI(0, '❌ Stream connection lost', 'error');
       }
     }

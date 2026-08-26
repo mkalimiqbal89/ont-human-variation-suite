@@ -267,10 +267,20 @@ class SuiteUIHandler(BaseHTTPRequestHandler):
                         sv_fasta = fixture_fa
 
                 # Resolve Methylation reference files
+                meth_ref_base = "/Volumes/Extreme_SSD/Bioinformatics_KAL/References"
                 meth_fixture_dir = os.path.join(REPO_DIR, "pipelines", "methylation", "tests", "fixtures")
-                chrom_sizes = os.path.join(meth_fixture_dir, "test_chrom.sizes")
-                promoter_bed = os.path.join(meth_fixture_dir, "test_promoters.bed")
-                cpg_island_bed = os.path.join(meth_fixture_dir, "test_cpg_islands.bed")
+
+                chrom_sizes = os.path.join(meth_ref_base, "GRCh38", "hg38.chrom.sizes")
+                if not os.path.exists(chrom_sizes):
+                    chrom_sizes = os.path.join(meth_fixture_dir, "test_chrom.sizes")
+
+                promoter_bed = os.path.join(meth_ref_base, "GENCODE", "promoters_2kb.bed")
+                if not os.path.exists(promoter_bed):
+                    promoter_bed = os.path.join(meth_fixture_dir, "test_promoters.bed")
+
+                cpg_island_bed = os.path.join(meth_ref_base, "CpG_Islands", "cpg_islands_hg38.bed")
+                if not os.path.exists(cpg_island_bed):
+                    cpg_island_bed = os.path.join(meth_fixture_dir, "test_cpg_islands.bed")
 
                 saved_files = []
                 for pipe in selected_pipelines:
