@@ -53,10 +53,12 @@ sample_sheet_*.tsv
 # They record real sample IDs, absolute paths and hostnames.
 *.run_manifest.tsv
 
-# --- Scratch -----------------------------------------------------------------
+# --- Scratch & Sample Outputs ------------------------------------------------
 *.tmp
 *.swp
 work/
+TEST_SAMPLE/
+SUIT_TEST_SAMPLE_*/
 
 # --- R -----------------------------------------------------------------------
 .Rhistory
